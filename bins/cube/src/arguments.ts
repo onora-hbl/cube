@@ -21,7 +21,7 @@ const options: Options = {
   },
 }
 
-type Config = {
+export type Config = {
   leaderUrl: string
 }
 

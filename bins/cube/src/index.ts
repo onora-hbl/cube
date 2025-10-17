@@ -1,5 +1,6 @@
 import { CubeApiHealthEndpoint, InferResponse, ServerMode, ServerStatus } from 'common-components'
 import { parseArgs, printHelp, printVersion } from './arguments'
+import { executeCommand } from './cli'
 
 export class HealthCheckError extends Error {
   constructor(message: string, status?: number) {
@@ -56,6 +57,7 @@ async function main() {
   }
 
   console.log(`Health check to leader succeeded`)
+  await executeCommand(args.args, args.config)
 
   process.exit(0)
 }
