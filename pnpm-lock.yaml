@@ -95,7 +95,11 @@ importers:
         specifier: ^5.9.3
         version: 5.9.3
 
-  libs/common-components: {}
+  libs/common-components:
+    devDependencies:
+      fastify:
+        specifier: ^5.6.1
+        version: 5.6.1
 
 packages:
 

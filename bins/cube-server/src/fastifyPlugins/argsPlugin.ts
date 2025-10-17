@@ -1,5 +1,5 @@
+import { ServerMode } from 'common-components'
 import { FastifyPluginAsync } from 'fastify'
-import { ServerMode } from '../arguments'
 import fp from 'fastify-plugin'
 
 interface ParsedOptions {

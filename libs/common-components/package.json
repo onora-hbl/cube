@@ -15,5 +15,8 @@
 	"keywords": [],
 	"author": "",
 	"license": "ISC",
-	"packageManager": "pnpm@10.12.4"
+	"packageManager": "pnpm@10.12.4",
+	"devDependencies": {
+		"fastify": "^5.6.1"
+	}
 }

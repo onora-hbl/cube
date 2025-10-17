@@ -1,9 +1,10 @@
-import { parseArgs, printHelp, printVersion, ServerMode } from './arguments'
+import { parseArgs, printHelp, printVersion } from './arguments'
 import logger from './logger'
 import Fastify from 'fastify'
 import commonEndpoints from './endpoints/common'
 import leaderEndpoints from './endpoints/leader'
 import argsPlugin from './fastifyPlugins/argsPlugin'
+import { BaseErrorCode, ServerMode } from 'common-components'
 
 async function main() {
   const args = parseArgs()
@@ -17,6 +18,23 @@ async function main() {
   }
 
   const app = Fastify()
+
+  app.setErrorHandler((error, request, reply) => {
+    if (error.validation) {
+      const error: { code: BaseErrorCode; message: string } = {
+        code: 'BAD_REQUEST',
+        message: 'Invalid request data',
+      }
+      reply.status(400).send(error)
+    } else {
+      logger.error({ err: error }, `Error in request ${request.method} ${request.url}`)
+      const errorResponse: { code: BaseErrorCode; message: string } = {
+        code: 'INTERNAL_ERROR',
+        message: 'Internal server error',
+      }
+      reply.status(500).send(errorResponse)
+    }
+  })
 
   await app.register(argsPlugin, {
     parsedOptions: {
