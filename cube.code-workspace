@@ -1,0 +1,26 @@
+{
+  "folders": [
+    {
+      "name": "📁 Root directory",
+      "path": "."
+    },
+    {
+      "name": "💻 Cube",
+      "path": "bins/cube"
+    },
+    {
+      "name": "🛠️ Cube server",
+      "path": "bins/cube-server"
+    },
+    {
+      "name": "📦 Common components lib",
+      "path": "libs/common-components"
+    }
+  ],
+  "settings": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.formatOnSave": true,
+    "editor.tabSize": 2,
+    "editor.insertSpaces": false
+  }
+}
