@@ -11,6 +11,9 @@ importers:
 
   bins/cube:
     dependencies:
+      common-components:
+        specifier: workspace:*
+        version: link:../../libs/common-components
       node-fetch:
         specifier: ^3.3.2
         version: 3.3.2
