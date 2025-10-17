@@ -28,7 +28,7 @@ const leaderEndpoints: FastifyPluginAsync = async (fastify) => {
     url: CubeApiRegisterFollowerEndpoint.url,
     schema: CubeApiRegisterFollowerEndpoint.schema,
     preHandler: validateToken,
-    handler: registerFollowerHandler,
+    handler: (req, rep) => registerFollowerHandler(fastify, req, rep),
   })
 }
 

@@ -4,7 +4,9 @@ import Fastify from 'fastify'
 import commonEndpoints from './endpoints/common'
 import leaderEndpoints from './endpoints/leader'
 import argsPlugin from './fastifyPlugins/argsPlugin'
+import databasePlugin from './fastifyPlugins/databasePlugin'
 import { BaseErrorCode, ServerMode } from 'common-components'
+import nodesPlugin from './fastifyPlugins/nodesPlugin'
 
 async function main() {
   const args = parseArgs()
@@ -44,6 +46,12 @@ async function main() {
       leaderPort: args.options.leaderPort,
     },
   })
+
+  await app.register(databasePlugin, {
+    filePath: args.options.database,
+  })
+
+  await app.register(nodesPlugin)
 
   await app.register(commonEndpoints)
   logger.debug('Registered common endpoints')

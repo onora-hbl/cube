@@ -22,6 +22,11 @@ export const CubeApiRegisterFollowerEndpoint = defineEndpoint({
   url: '/api/register-follower',
   requestBody: {} as CubeRegisterFollowerRequest,
   responseBody: undefined,
-  errors: ['HEALTH_CHECK_FAILED', 'SERVER_NOT_HEALTHY', 'SERVER_NOT_IN_FOLLOWER_MODE'] as const,
+  errors: [
+    'HEALTH_CHECK_FAILED',
+    'SERVER_NOT_HEALTHY',
+    'SERVER_NOT_IN_FOLLOWER_MODE',
+    'NODE_ALREADY_REGISTERED',
+  ] as const,
   schema: CubeRegisterFollowerSchema,
 })

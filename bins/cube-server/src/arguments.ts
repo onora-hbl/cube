@@ -38,6 +38,11 @@ const options: Options = {
     type: 'boolean',
     alias: 'v',
   },
+  database: {
+    type: 'string',
+    alias: 'd',
+    default: '/opt/cube/data/cube.db',
+  },
 }
 
 export function parseArgs() {
@@ -72,6 +77,9 @@ export function printHelp() {
   console.log(`${padding} --leaderHost <host>  Host of the leader server if follower mode`)
   console.log(
     `${padding} --leaderPort <port>  Port of the leader server if follower mode. Default is 4242`,
+  )
+  console.log(
+    `${padding} -d, --database <path>  Path to the SQLite database file. Default is /opt/cube/data/cube.db`,
   )
 }
 

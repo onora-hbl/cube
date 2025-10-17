@@ -7,12 +7,16 @@ import {
   ServerMode,
   ServerStatus,
 } from 'common-components'
-import { FastifyReply, FastifyRequest } from 'fastify'
+import fastify, { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 import logger from '../logger'
 
 const childLogger = logger.child({ route: 'registerFollower' })
 
-export const registerFollowerHandler = async (request: FastifyRequest, reply: FastifyReply) => {
+export const registerFollowerHandler = async (
+  fastify: FastifyInstance,
+  request: FastifyRequest,
+  reply: FastifyReply,
+) => {
   const body: InferRequest<typeof CubeApiRegisterFollowerEndpoint> = request.body as any
   const followerHost = request.ip
   const followerPort = body.port
@@ -21,6 +25,15 @@ export const registerFollowerHandler = async (request: FastifyRequest, reply: Fa
   childLogger.debug(
     `Trying to register follower ${followerName} from ${followerHost}:${followerPort}`,
   )
+
+  if (fastify.knownNodes.some((node) => node.name === followerName)) {
+    childLogger.error(`Node with name ${followerName} is already registered`)
+    const err: InferError<typeof CubeApiRegisterFollowerEndpoint> = {
+      code: 'NODE_ALREADY_REGISTERED',
+      message: 'Node with this name is already registered',
+    }
+    return reply.status(400).send(err)
+  }
 
   const res = await fetch(`http://${followerHost}:${followerPort}${CubeApiHealthEndpoint.url}`, {
     method: CubeApiHealthEndpoint.method,
@@ -55,9 +68,11 @@ export const registerFollowerHandler = async (request: FastifyRequest, reply: Fa
     return reply.status(400).send(err)
   }
 
-  childLogger.info(
-    `Follower ${followerName} at ${followerHost}:${followerPort} registered successfully`,
-  )
+  fastify.registerNode({
+    name: followerName,
+    host: `${followerHost}:${followerPort}`,
+    type: ServerMode.FOLLOWER,
+  })
 
   return reply.status(200).send()
 }
