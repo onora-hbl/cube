@@ -1,4 +1,10 @@
-import { CubeApiHealthEndpoint, InferError, InferResponse, ServerStatus } from 'common-components'
+import {
+  CubeApiHealthEndpoint,
+  InferError,
+  InferResponse,
+  ServerMode,
+  ServerStatus,
+} from 'common-components'
 import { FastifyPluginAsync } from 'fastify'
 
 const commonEndpoints: FastifyPluginAsync = async (fastify) => {
@@ -6,6 +12,12 @@ const commonEndpoints: FastifyPluginAsync = async (fastify) => {
 
   fastify.addHook('onReady', () => {
     isReady = true
+    if (fastify.args.mode === ServerMode.FOLLOWER) {
+      fastify.initAsFollower()
+    }
+    if (fastify.args.mode === ServerMode.LEADER) {
+      fastify.initAsLeader()
+    }
   })
 
   fastify.route({

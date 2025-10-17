@@ -43,6 +43,10 @@ const options: Options = {
     alias: 'd',
     default: '/opt/cube/data/cube.db',
   },
+  name: {
+    type: 'string',
+    required: true,
+  },
 }
 
 export function parseArgs() {

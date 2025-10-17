@@ -44,6 +44,8 @@ async function main() {
       mode: args.options.mode,
       leaderHost: args.options.leaderHost,
       leaderPort: args.options.leaderPort,
+      port: args.options.port,
+      name: args.options.name,
     },
   })
 

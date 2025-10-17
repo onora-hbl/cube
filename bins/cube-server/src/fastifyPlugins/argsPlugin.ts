@@ -7,6 +7,8 @@ interface ParsedOptions {
   mode: ServerMode
   leaderHost?: string
   leaderPort?: number
+  name: string
+  port: number
 }
 
 declare module 'fastify' {
@@ -30,6 +32,8 @@ const argsPlugin: FastifyPluginAsync<{ parsedOptions: ParsedOptions }> = async (
       options.parsedOptions.mode === ServerMode.LEADER
         ? undefined
         : options.parsedOptions.leaderPort,
+    name: options.parsedOptions.name,
+    port: options.parsedOptions.port,
   })
 }
 

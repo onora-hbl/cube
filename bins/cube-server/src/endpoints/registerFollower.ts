@@ -9,6 +9,7 @@ import {
 } from 'common-components'
 import fastify, { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 import logger from '../logger'
+import { NodeStatus } from '../fastifyPlugins/nodesPlugin'
 
 const childLogger = logger.child({ route: 'registerFollower' })
 
@@ -18,7 +19,8 @@ export const registerFollowerHandler = async (
   reply: FastifyReply,
 ) => {
   const body: InferRequest<typeof CubeApiRegisterFollowerEndpoint> = request.body as any
-  const followerHost = request.ip
+  // TODO
+  const followerHost = 'localhost'
   const followerPort = body.port
   const followerName = body.name
 
@@ -72,6 +74,7 @@ export const registerFollowerHandler = async (
     name: followerName,
     host: `${followerHost}:${followerPort}`,
     type: ServerMode.FOLLOWER,
+    status: NodeStatus.HEALTHY,
   })
 
   return reply.status(200).send()
