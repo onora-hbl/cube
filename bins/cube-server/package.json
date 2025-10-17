@@ -17,9 +17,11 @@
   "dependencies": {
     "node-fetch": "^3.3.2",
     "pino": "^10.0.0",
-    "pino-pretty": "^13.1.2"
+    "pino-pretty": "^13.1.2",
+    "common-components": "workspace:*"
   },
   "devDependencies": {
+    "@types/minimist": "^1.2.5",
     "@types/node": "^24.8.0",
     "@types/node-fetch": "^2.6.13",
     "@types/pino": "^7.0.5",

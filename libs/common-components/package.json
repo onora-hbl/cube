@@ -1,0 +1,19 @@
+{
+	"name": "common-components",
+	"version": "1.0.0",
+	"description": "",
+	"main": "dist/index.js",
+	"types": "./dist/index.d.ts",
+	"files": [
+		"dist"
+	],
+	"scripts": {
+		"lint": "eslint --ext .ts src && prettier --check \"./src/**/*.{ts,tsx,json}\" src",
+		"build": "tsc",
+		"watch": "tsc --watch"
+	},
+	"keywords": [],
+	"author": "",
+	"license": "ISC",
+	"packageManager": "pnpm@10.12.4"
+}

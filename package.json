@@ -1,0 +1,13 @@
+{
+	"name": "cube-monorepo",
+	"private": true,
+	"workspaces": [
+		"bins/*",
+		"libs/*"
+	],
+	"volta": {
+		"node": "23.5.0",
+		"pnpm": "10.12.4"
+	},
+	"packageManager": "pnpm@10.12.4"
+}
