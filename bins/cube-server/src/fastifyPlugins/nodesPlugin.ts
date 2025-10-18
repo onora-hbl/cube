@@ -5,22 +5,16 @@ import {
   ServerMode,
   ServerStatus,
   InferRequest,
+  NodeStatus,
 } from 'common-components'
 import fp from 'fastify-plugin'
 import logger from '../logger'
 import { FastifyInstance } from 'fastify'
 
-export enum NodeStatus {
-  HEALTHY = 'healthy',
-  UNHEALTHY = 'unhealthy',
-  UNKNOWN = 'unknown',
-  UNAVAILABLE = 'unavailable',
-}
-
 export type Node = {
   name: string
   host: string
-  type: ServerMode
+  mode: ServerMode
   status: NodeStatus
 }
 
@@ -57,7 +51,7 @@ async function healthCheckNode(node: Node) {
 }
 
 async function initLeader(fastify: FastifyInstance) {
-  const healthCheckIntervalId = setInterval(async () => {
+  const healthCheckAll = async () => {
     await Promise.all(
       fastify.knownNodes.map(async (node) => {
         try {
@@ -81,11 +75,15 @@ async function initLeader(fastify: FastifyInstance) {
         }
       }),
     )
-  }, 10_000)
+  }
+
+  const healthCheckIntervalId = setInterval(healthCheckAll, 10_000)
 
   fastify.addHook('onClose', async () => {
     clearInterval(healthCheckIntervalId)
   })
+
+  await healthCheckAll()
 }
 
 async function initFollower(fastify: FastifyInstance, knownNodes: Node[]) {
@@ -112,7 +110,7 @@ DELETE FROM node WHERE name = ?;
     const leaderNode: Node = {
       name: 'leader',
       host: `${fastify.args.leaderHost}:${fastify.args.leaderPort}`,
-      type: ServerMode.LEADER,
+      mode: ServerMode.LEADER,
       status: NodeStatus.UNKNOWN,
     }
     const body: InferRequest<typeof CubeApiRegisterFollowerEndpoint> = {
@@ -146,6 +144,7 @@ SELECT name, host, type FROM node;
     .all()
     .map((node: any) => ({
       ...node,
+      mode: node.type,
       status: NodeStatus.UNKNOWN,
     }))
 
@@ -172,10 +171,10 @@ SELECT name, host, type FROM node;
 INSERT INTO node (name, host, type) VALUES (?, ?, ?);
 `,
       )
-      .run(node.name, node.host, node.type)
+      .run(node.name, node.host, node.mode)
 
     fastify.knownNodes.push(node)
-    childLogger.info(`Registered new node: ${node.name} at ${node.host} (${node.type})`)
+    childLogger.info(`Registered new node: ${node.name} at ${node.host} (${node.mode})`)
   })
 }
 

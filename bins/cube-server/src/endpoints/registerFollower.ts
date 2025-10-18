@@ -4,12 +4,12 @@ import {
   InferError,
   InferRequest,
   InferResponse,
+  NodeStatus,
   ServerMode,
   ServerStatus,
 } from 'common-components'
-import fastify, { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
+import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 import logger from '../logger'
-import { NodeStatus } from '../fastifyPlugins/nodesPlugin'
 
 const childLogger = logger.child({ route: 'registerFollower' })
 
@@ -73,7 +73,7 @@ export const registerFollowerHandler = async (
   fastify.registerNode({
     name: followerName,
     host: `${followerHost}:${followerPort}`,
-    type: ServerMode.FOLLOWER,
+    mode: ServerMode.FOLLOWER,
     status: NodeStatus.HEALTHY,
   })
 

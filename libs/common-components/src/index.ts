@@ -8,6 +8,7 @@ import {
   BaseErrorCode,
 } from './protocol/common'
 import { CubeApiRegisterFollowerEndpoint } from './protocol/registerFollower'
+import { CubeApiNodesEndpoint, NodeStatus } from './protocol/nodes'
 
 export {
   Option,
@@ -24,4 +25,6 @@ export {
   BaseErrorCode,
   CubeApiHealthEndpoint,
   CubeApiRegisterFollowerEndpoint,
+  CubeApiNodesEndpoint,
+  NodeStatus,
 }
