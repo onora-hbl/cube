@@ -1,0 +1,15 @@
+[
+  {
+    "type": "container",
+    "metadata": {
+      "name": "container-name"
+    },
+    "spec": {
+      "name": "hello-kube",
+      "image": "paulbouwer/hello-kubernetes:1.10",
+      "env": {
+        "MESSAGE": "Hello from Cube!"
+      }
+    }
+  }
+]

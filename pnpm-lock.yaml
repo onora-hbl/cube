@@ -11,6 +11,9 @@ importers:
 
   bins/cube:
     dependencies:
+      ajv:
+        specifier: ^8.17.1
+        version: 8.17.1
       common-components:
         specifier: workspace:*
         version: link:../../libs/common-components
@@ -106,6 +109,9 @@ importers:
 
   libs/common-components:
     devDependencies:
+      ajv:
+        specifier: ^8.17.1
+        version: 8.17.1
       fastify:
         specifier: ^5.6.1
         version: 5.6.1

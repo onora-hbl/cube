@@ -15,8 +15,9 @@
   "license": "ISC",
   "packageManager": "pnpm@10.12.4",
   "dependencies": {
-    "node-fetch": "^3.3.2",
-    "common-components": "workspace:*"
+    "ajv": "^8.17.1",
+    "common-components": "workspace:*",
+    "node-fetch": "^3.3.2"
   },
   "devDependencies": {
     "@types/node": "^24.8.0",

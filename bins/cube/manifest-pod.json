@@ -1,0 +1,24 @@
+[
+  {
+    "type": "pod",
+    "metadata": {
+      "name": "pod-name",
+      "labels": {
+        "app": "hello-kube-pod"
+      }
+    },
+    "spec": {
+      "containers": [
+        {
+          "spec": {
+            "name": "hello-kube-pod",
+            "image": "paulbouwer/hello-kubernetes:1.10",
+            "env": {
+              "MESSAGE": "Hello from Cube Pod!"
+            }
+          }
+        }
+      ]
+    }
+  }
+]

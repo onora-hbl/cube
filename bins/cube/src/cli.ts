@@ -1,4 +1,5 @@
 import { Config, printHelp } from './arguments'
+import { applyCmd } from './commands/apply'
 import { nodesCmd } from './commands/nodes'
 
 export async function executeCommand(args: string[], config: Config) {
@@ -11,6 +12,9 @@ export async function executeCommand(args: string[], config: Config) {
   switch (cmd) {
     case 'nodes':
       await nodesCmd(args.slice(1), config)
+      break
+    case 'apply':
+      await applyCmd(args.slice(1), config)
       break
     default:
       console.log(`Unknown command: ${cmd}`)
