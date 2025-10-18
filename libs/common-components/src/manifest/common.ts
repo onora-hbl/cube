@@ -39,6 +39,9 @@ export type ResourceDefinition =
       spec: typeof PodResource.specType
     }
 
+export const allResourceTypes = allResources.map((r) => r.type)
+export type ResourceType = ResourceDefinition['type']
+
 export const ResourceSchema = {
   oneOf: allResources.map((r) => ({
     type: 'object',

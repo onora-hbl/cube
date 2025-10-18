@@ -1,15 +1,8 @@
 import { FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify'
-import logger from '../logger'
 import {
   CubeApiApplyEndpoint,
-  CubeApiHealthEndpoint,
   CubeApiNodesEndpoint,
   CubeApiRegisterFollowerEndpoint,
-  InferError,
-  InferRequest,
-  InferResponse,
-  ServerMode,
-  ServerStatus,
 } from 'common-components'
 import { registerFollowerHandler } from './registerFollower'
 import { nodesHandler } from './nodes'

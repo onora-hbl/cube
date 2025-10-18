@@ -9,8 +9,14 @@ import {
 } from './protocol/common'
 import { CubeApiRegisterFollowerEndpoint } from './protocol/registerFollower'
 import { CubeApiNodesEndpoint, NodeStatus } from './protocol/nodes'
-import { ResourceDefinition, ResourceSchema } from './manifest/common'
+import {
+  ResourceDefinition,
+  ResourceSchema,
+  ResourceType,
+  allResourceTypes as ResourcesTypes,
+} from './manifest/common'
 import { CubeApiApplyEndpoint } from './protocol/apply'
+import { CubeApiGetEndpoint, ContainerStatus } from './protocol/get'
 
 export {
   Option,
@@ -32,4 +38,8 @@ export {
   ResourceDefinition,
   ResourceSchema,
   CubeApiApplyEndpoint,
+  ResourceType,
+  CubeApiGetEndpoint,
+  ContainerStatus,
+  ResourcesTypes,
 }

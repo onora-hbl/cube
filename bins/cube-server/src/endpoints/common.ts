@@ -1,4 +1,5 @@
 import {
+  CubeApiGetEndpoint,
   CubeApiHealthEndpoint,
   InferError,
   InferResponse,
@@ -6,6 +7,7 @@ import {
   ServerStatus,
 } from 'common-components'
 import { FastifyPluginAsync } from 'fastify'
+import { getHandler } from './get'
 
 const commonEndpoints: FastifyPluginAsync = async (fastify) => {
   let isReady = false
@@ -38,6 +40,13 @@ const commonEndpoints: FastifyPluginAsync = async (fastify) => {
       }
       return reply.send(res)
     },
+  })
+
+  fastify.route({
+    method: CubeApiGetEndpoint.method,
+    url: CubeApiGetEndpoint.url,
+    schema: CubeApiGetEndpoint.schema,
+    handler: (req, rep) => getHandler(fastify, req, rep),
   })
 }
 
