@@ -1,6 +1,7 @@
 import { FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify'
 import logger from '../logger'
 import {
+  CubeApiApplyEndpoint,
   CubeApiHealthEndpoint,
   CubeApiNodesEndpoint,
   CubeApiRegisterFollowerEndpoint,
@@ -12,6 +13,7 @@ import {
 } from 'common-components'
 import { registerFollowerHandler } from './registerFollower'
 import { nodesHandler } from './nodes'
+import { applyHandler } from './apply'
 
 const validateToken = (request: FastifyRequest, reply: FastifyReply, done: () => void) => {
   if (!('authorization' in request.headers)) {
@@ -38,6 +40,13 @@ const leaderEndpoints: FastifyPluginAsync = async (fastify) => {
     url: CubeApiNodesEndpoint.url,
     schema: CubeApiNodesEndpoint.schema,
     handler: (req, rep) => nodesHandler(fastify, req, rep),
+  })
+
+  fastify.route({
+    method: CubeApiApplyEndpoint.method,
+    url: CubeApiApplyEndpoint.url,
+    schema: CubeApiApplyEndpoint.schema,
+    handler: (req, rep) => applyHandler(fastify, req, rep),
   })
 }
 

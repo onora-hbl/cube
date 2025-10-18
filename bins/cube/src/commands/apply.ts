@@ -1,7 +1,14 @@
 import { Config } from '../arguments'
 import fs from 'fs'
 import Ajv from 'ajv'
-import { ResourceDefinition, ResourceSchema } from 'common-components'
+import {
+  CubeApiApplyEndpoint,
+  InferError,
+  InferRequest,
+  InferResponse,
+  ResourceDefinition,
+  ResourceSchema,
+} from 'common-components'
 
 const ajv = new Ajv()
 
@@ -11,12 +18,28 @@ export async function applyResource(resource: ResourceDefinition, config: Config
   console.log(
     `Applying resource of type ${resource.type} with name ${resource.metadata?.name || '<unnamed>'}`,
   )
+  const body: InferRequest<typeof CubeApiApplyEndpoint> = { resource }
+  const res = await fetch(`${config.leaderUrl}${CubeApiApplyEndpoint.url}`, {
+    method: CubeApiApplyEndpoint.method,
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  })
+  if (!res.ok) {
+    const error = (await res.json()) as InferError<typeof CubeApiApplyEndpoint>
+    console.error(`Failed to apply resource: ${error.message}`)
+    return
+  }
+  const appliedResource = (await res.json()) as InferResponse<typeof CubeApiApplyEndpoint>
+  console.log(`Successfully applied resource: ${JSON.stringify(appliedResource.resource)}`)
 }
 
 export async function applyResourcesList(jsonData: any[], config: Config) {
   if (!Array.isArray(jsonData)) {
     throw new ManifestError('Invalid JSON format. Expected an array of objects.')
   }
+  const resourcePromises = []
   for (const resource of jsonData) {
     if (typeof resource !== 'object' || resource === null) {
       throw new ManifestError('Each resource must be a non-null object.')
@@ -25,8 +48,9 @@ export async function applyResourcesList(jsonData: any[], config: Config) {
     if (!valid) {
       throw new ManifestError(`Resource validation failed: ${ajv.errorsText()}`)
     }
-    await applyResource(resource as ResourceDefinition, config)
+    resourcePromises.push(applyResource(resource as ResourceDefinition, config))
   }
+  await Promise.all(resourcePromises)
 }
 
 export async function applyCmd(args: string[], config: Config) {

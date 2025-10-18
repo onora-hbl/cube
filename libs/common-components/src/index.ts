@@ -10,6 +10,7 @@ import {
 import { CubeApiRegisterFollowerEndpoint } from './protocol/registerFollower'
 import { CubeApiNodesEndpoint, NodeStatus } from './protocol/nodes'
 import { ResourceDefinition, ResourceSchema } from './manifest/common'
+import { CubeApiApplyEndpoint } from './protocol/apply'
 
 export {
   Option,
@@ -30,4 +31,5 @@ export {
   NodeStatus,
   ResourceDefinition,
   ResourceSchema,
+  CubeApiApplyEndpoint,
 }

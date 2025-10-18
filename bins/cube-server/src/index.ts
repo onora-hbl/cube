@@ -7,6 +7,7 @@ import argsPlugin from './fastifyPlugins/argsPlugin'
 import databasePlugin from './fastifyPlugins/databasePlugin'
 import { BaseErrorCode, ServerMode } from 'common-components'
 import nodesPlugin from './fastifyPlugins/nodesPlugin'
+import resourcesPlugin from './fastifyPlugins/resourcesPlugin'
 
 async function main() {
   const args = parseArgs()
@@ -54,6 +55,8 @@ async function main() {
   })
 
   await app.register(nodesPlugin)
+
+  await app.register(resourcesPlugin)
 
   await app.register(commonEndpoints)
   logger.debug('Registered common endpoints')
