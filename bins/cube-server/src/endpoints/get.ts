@@ -1,16 +1,40 @@
 import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 import logger from '../logger'
-import {
-  BaseErrorCode,
-  ContainerStatus,
-  CubeApiGetEndpoint,
-  InferResponse,
-} from 'common-components'
-import { Resource } from '../fastifyPlugins/resourcesPlugin'
-import { ContainerResource } from 'common-components/dist/manifest/container'
-import { PodResource } from 'common-components/dist/manifest/pod'
+import { ContainerStatus, CubeApiGetEndpoint, InferResponse } from 'common-components'
+import { Resource, ResourceEventType } from '../fastifyPlugins/resourcesPlugin'
 
 const childLogger = logger.child({ route: 'get' })
+
+function getContainerStatusFromEvents(resource: Resource): ContainerStatus {
+  const events = resource.events || []
+  events.sort((a, b) => b.happenedAt.getTime() - a.happenedAt.getTime())
+  const latestEvent = events[0]
+  if (!latestEvent) {
+    return ContainerStatus.SCHEDULING
+  }
+  if (latestEvent.type == ResourceEventType.CREATED) {
+    return ContainerStatus.SCHEDULING
+  }
+  if (latestEvent.type == ResourceEventType.SCHEDULED) {
+    return ContainerStatus.STARTING
+  }
+  if (latestEvent.type == ResourceEventType.STARTED) {
+    return ContainerStatus.STARTING
+  }
+  if (latestEvent.type == ResourceEventType.READY) {
+    return ContainerStatus.RUNNING
+  }
+  if (latestEvent.type == ResourceEventType.FAILED) {
+    return ContainerStatus.CRASH
+  }
+  if (latestEvent.type == ResourceEventType.TERMINATED) {
+    return ContainerStatus.FINISHED
+  }
+  if (latestEvent.type == ResourceEventType.DELETED) {
+    return ContainerStatus.DELETING
+  }
+  return ContainerStatus.SCHEDULING
+}
 
 async function getContainerOverview(
   resource: Resource,
@@ -22,7 +46,7 @@ async function getContainerOverview(
     name: resource.metadata!.name!,
     overview: {
       createdAt: resource.metadata!.creationTimestamp!,
-      status: ContainerStatus.RUNNING,
+      status: getContainerStatusFromEvents(resource),
     },
   }
 }

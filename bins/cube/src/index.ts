@@ -56,7 +56,7 @@ async function main() {
     }
   }
 
-  console.log(`Health check to leader succeeded`)
+  // console.log(`Health check to leader succeeded`)
   await executeCommand(args.args, args.config)
 
   process.exit(0)

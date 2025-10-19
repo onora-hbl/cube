@@ -8,7 +8,6 @@ async function updateResource(resource: ResourceDefinition, fastify: FastifyInst
 
 async function createResource(resource: ResourceDefinition, fastify: FastifyInstance) {
   const res = fastify.createResource(resource)
-  console.log('Created resource:', res)
 }
 
 export const applyHandler = async (
