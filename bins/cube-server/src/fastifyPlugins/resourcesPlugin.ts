@@ -47,6 +47,7 @@ declare module 'fastify' {
   interface FastifyInstance {
     resources: Resource[]
     createResource: (resource: Omit<Resource, 'events'>) => void
+    scheduleResource: (resourceName: string, nodeName: string) => void
   }
 }
 
@@ -120,6 +121,46 @@ function createResource(resource: Omit<Resource, 'events'>, fastify: FastifyInst
   ])
 }
 
+async function scheduleResource(fastify: FastifyInstance, resourceName: string, nodeName: string) {
+  const resource = fastify.resources.find((r) => r.metadata?.name === resourceName)
+  if (!resource) {
+    throw new Error(`Resource ${resourceName} not found`)
+  }
+  const resourceRecord = fastify.db
+    .prepare('SELECT id FROM resource WHERE name = ?')
+    .get(resourceName) as ResourceRecord | undefined
+  if (!resourceRecord) {
+    throw new Error(`Resource record for ${resourceName} not found in database`)
+  }
+  fastify.db
+    .prepare('UPDATE resource SET scheduled_on = ? WHERE id = ?')
+    .run(nodeName, resourceRecord.id)
+  resource.scheduledOn = nodeName
+  const resourceEventRecord = {
+    resource_id: resourceRecord.id,
+    happened_at: new Date().toISOString(),
+    event_type: ResourceEventType.SCHEDULED,
+    details: `Resource scheduled on node ${nodeName}`,
+  }
+  const eventInfo = fastify.db
+    .prepare(
+      `INSERT INTO resource_event (resource_id, happened_at, event_type, details) VALUES (?, ?, ?, ?)`,
+    )
+    .run(
+      resourceEventRecord.resource_id,
+      resourceEventRecord.happened_at,
+      resourceEventRecord.event_type,
+      resourceEventRecord.details,
+    )
+  resource.events.push(
+    resourceEventRecordToResourceEvent({
+      id: eventInfo.lastInsertRowid as number,
+      ...resourceEventRecord,
+    }),
+  )
+  fastify.db
+}
+
 const childLogger = logger.child({ plugin: 'resourcesPlugin' })
 
 const resourcesPlugin = async (fastify: FastifyInstance) => {
@@ -143,6 +184,10 @@ const resourcesPlugin = async (fastify: FastifyInstance) => {
 
   fastify.decorate('createResource', (resource: Omit<Resource, 'events'>) =>
     createResource(resource, fastify),
+  )
+
+  fastify.decorate('scheduleResource', (resourceName: string, nodeName: string) =>
+    scheduleResource(fastify, resourceName, nodeName),
   )
 }
 
