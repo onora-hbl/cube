@@ -15,6 +15,10 @@ abstract class Scheduler {
     this.intervalId = setInterval(() => this.tick(), 1000)
   }
 
+  updateFastifyInstance(fastify: FastifyInstance) {
+    this.fastify = fastify
+  }
+
   [Symbol.dispose]() {
     if (this.intervalId) {
       clearInterval(this.intervalId)
@@ -55,6 +59,10 @@ const argsPlugin: FastifyPluginAsync = async (fastify) => {
 
   fastify.addHook('onClose', async (instance) => {
     instance.scheduler[Symbol.dispose]()
+  })
+
+  fastify.resourceChangedSignal.on('update', () => {
+    fastify.scheduler.updateFastifyInstance(fastify)
   })
 }
 

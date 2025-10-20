@@ -18,6 +18,18 @@ function getContainerStatusFromEvents(resource: Resource): ContainerStatus {
   if (latestEvent.type == ResourceEventType.SCHEDULED) {
     return ContainerStatus.STARTING
   }
+  if (latestEvent.type == ResourceEventType.PULLING) {
+    return ContainerStatus.STARTING
+  }
+  if (latestEvent.type == ResourceEventType.PULLED) {
+    return ContainerStatus.STARTING
+  }
+  if (latestEvent.type == ResourceEventType.PULL_ERROR) {
+    return ContainerStatus.STARTING
+  }
+  if (latestEvent.type == ResourceEventType.PULL_LOOP_ERROR) {
+    return ContainerStatus.CRASH
+  }
   if (latestEvent.type == ResourceEventType.STARTED) {
     return ContainerStatus.STARTING
   }

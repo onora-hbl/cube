@@ -9,6 +9,7 @@ import { BaseErrorCode, ServerMode } from 'common-components'
 import nodesPlugin from './fastifyPlugins/nodesPlugin'
 import resourcesPlugin from './fastifyPlugins/resourcesPlugin'
 import schedulerPlugin from './fastifyPlugins/schedulerPlugin'
+import dockerPlugin from './fastifyPlugins/dockerPlugin'
 
 async function main() {
   const args = parseArgs()
@@ -60,6 +61,8 @@ async function main() {
   await app.register(resourcesPlugin)
 
   await app.register(schedulerPlugin)
+
+  await app.register(dockerPlugin)
 
   await app.register(commonEndpoints)
   logger.debug('Registered common endpoints')

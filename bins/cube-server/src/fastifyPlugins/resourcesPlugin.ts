@@ -2,6 +2,7 @@ import { ResourceDefinition } from 'common-components'
 import logger from '../logger'
 import { FastifyInstance } from 'fastify'
 import fp from 'fastify-plugin'
+import EventEmitter from 'events'
 
 export type ResourceEvent = {
   type: ResourceEventType
@@ -28,6 +29,10 @@ type ResourceRecord = {
 export enum ResourceEventType {
   CREATED = 'created',
   SCHEDULED = 'scheduled',
+  PULLING = 'pulling',
+  PULLED = 'pulled',
+  PULL_ERROR = 'pull_error',
+  PULL_LOOP_ERROR = 'pull_loop_error',
   STARTED = 'started',
   READY = 'ready',
   FAILED = 'failed',
@@ -48,6 +53,12 @@ declare module 'fastify' {
     resources: Resource[]
     createResource: (resource: Omit<Resource, 'events'>) => void
     scheduleResource: (resourceName: string, nodeName: string) => void
+    resourceChangedSignal: EventEmitter
+    createEventForResource: (
+      resourceName: string,
+      eventType: ResourceEventType,
+      details: string,
+    ) => void
   }
 }
 
@@ -158,12 +169,58 @@ async function scheduleResource(fastify: FastifyInstance, resourceName: string, 
       ...resourceEventRecord,
     }),
   )
-  fastify.db
+  if (nodeName === fastify.args.name) {
+    fastify.resourceChangedSignal.emit('update', resourceName)
+  } else {
+    // TODO: send request to the node
+  }
+}
+
+async function addEventToResource(
+  fastify: FastifyInstance,
+  resourceName: string,
+  eventType: ResourceEventType,
+  details: string,
+) {
+  const resource = fastify.resources.find((r) => r.metadata?.name === resourceName)
+  if (!resource) {
+    throw new Error(`Resource ${resourceName} not found`)
+  }
+  const resourceRecord = fastify.db
+    .prepare('SELECT id FROM resource WHERE name = ?')
+    .get(resourceName) as ResourceRecord | undefined
+  if (!resourceRecord) {
+    throw new Error(`Resource record for ${resourceName} not found in database`)
+  }
+  const resourceEventRecord = {
+    resource_id: resourceRecord.id,
+    happened_at: new Date().toISOString(),
+    event_type: eventType,
+    details,
+  }
+  const eventInfo = fastify.db
+    .prepare(
+      `INSERT INTO resource_event (resource_id, happened_at, event_type, details) VALUES (?, ?, ?, ?)`,
+    )
+    .run(
+      resourceEventRecord.resource_id,
+      resourceEventRecord.happened_at,
+      resourceEventRecord.event_type,
+      resourceEventRecord.details,
+    )
+  resource.events.push(
+    resourceEventRecordToResourceEvent({
+      id: eventInfo.lastInsertRowid as number,
+      ...resourceEventRecord,
+    }),
+  )
 }
 
 const childLogger = logger.child({ plugin: 'resourcesPlugin' })
 
 const resourcesPlugin = async (fastify: FastifyInstance) => {
+  const resourceChangedSignal = new EventEmitter()
+
   const resourceRecords = fastify.db.prepare('SELECT * FROM resource').all() as ResourceRecord[]
   const resourceEventRecords = fastify.db
     .prepare('SELECT * FROM resource_event')
@@ -183,11 +240,19 @@ const resourcesPlugin = async (fastify: FastifyInstance) => {
   fastify.decorate('resources', resources)
 
   fastify.decorate('createResource', (resource: Omit<Resource, 'events'>) =>
-    createResource(resource, fastify),
+    fastify.resources.push(createResource(resource, fastify)),
   )
 
-  fastify.decorate('scheduleResource', (resourceName: string, nodeName: string) =>
-    scheduleResource(fastify, resourceName, nodeName),
+  fastify.decorate('scheduleResource', async (resourceName: string, nodeName: string) => {
+    await scheduleResource(fastify, resourceName, nodeName)
+  })
+
+  fastify.decorate('resourceChangedSignal', resourceChangedSignal)
+  fastify.decorate(
+    'createEventForResource',
+    (resourceName: string, eventType: ResourceEventType, details: string) => {
+      addEventToResource(fastify, resourceName, eventType, details)
+    },
   )
 }
 
