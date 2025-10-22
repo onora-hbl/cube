@@ -5,27 +5,17 @@ import logger from './logger'
 const validatePortNumber = (n: number) => n > 0 && n <= 65535
 
 const options: Options = {
-  token: {
-    type: 'string',
-    default: () => crypto.randomUUID(),
-    alias: 't',
-  },
-  mode: {
-    type: 'string',
-    default: ServerMode.FOLLOWER,
-    validate: (value: string) => Object.values(ServerMode).includes(value as ServerMode),
-    alias: 'm',
-  },
   port: {
     type: 'number',
-    default: 4242,
+    default: 4243,
     validate: validatePortNumber,
     alias: 'p',
   },
-  leaderHost: {
+  apiServerHost: {
     type: 'string',
+    required: true,
   },
-  leaderPort: {
+  apiServerPort: {
     type: 'number',
     validate: validatePortNumber,
     default: 4242,
@@ -38,11 +28,6 @@ const options: Options = {
     type: 'boolean',
     alias: 'v',
   },
-  database: {
-    type: 'string',
-    alias: 'd',
-    default: '/opt/cube/data/cube.db',
-  },
   name: {
     type: 'string',
     required: true,
@@ -52,9 +37,6 @@ const options: Options = {
 export function parseArgs() {
   try {
     const args = parseArguments(process.argv.slice(2), options)
-    if (args.options.mode === ServerMode.FOLLOWER && args.options.leaderHost == null) {
-      throw new ParsingError('leaderHost option is required in follower mode')
-    }
     return args
   } catch (err) {
     if (err instanceof ParsingError) {
@@ -71,20 +53,12 @@ export function printHelp() {
   const padding = String(' ').repeat(beforeOption.length)
   console.log(`${padding} -h, --help           Show help`)
   console.log(`${padding} -v, --version        Show version`)
+  console.log(`${padding} -p, --port <number>  Port to run the cubelet server on (default: 4243)`)
+  console.log(`${padding} --apiServerHost <string>  Host of the API server to connect to`)
   console.log(
-    `${padding} --mode <mode>        Set server mode (leader or follower). Default is follower`,
+    `${padding} --apiServerPort <number>  Port of the API server to connect to (default: 4242)`,
   )
-  console.log(
-    `${padding} --token <token>      Set authentication token (at least 20 characters recommended)`,
-  )
-  console.log(`${padding} --port <port>        Set port to listen on. Default is 4242`)
-  console.log(`${padding} --leaderHost <host>  Host of the leader server if follower mode`)
-  console.log(
-    `${padding} --leaderPort <port>  Port of the leader server if follower mode. Default is 4242`,
-  )
-  console.log(
-    `${padding} -d, --database <path>  Path to the SQLite database file. Default is /opt/cube/data/cube.db`,
-  )
+  console.log(`${padding} --name <string>      Name of the cubelet node`)
 }
 
 export function printVersion() {

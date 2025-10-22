@@ -8,14 +8,12 @@ import {
   BaseErrorCode,
 } from './api/common'
 import { CubeletApiRegisterFollowerEndpoint } from './api/kubelet/registerFollower'
-import { CubeletApiNodesEndpoint, NodeStatus } from './api/kubelet/nodes'
 import {
   ResourceDefinition,
   ResourceSchema,
   ResourceType,
   allResourceTypes as ResourcesTypes,
 } from './manifest/common'
-import { CubeletApiApplyEndpoint } from './api/kubelet/apply'
 import { CubeletApiGetEndpoint, ContainerStatus } from './api/kubelet/get'
 import { ApiServerApiHealthEndpoint, CubeApiServerStatus } from './api/api-server/health'
 import {
@@ -38,11 +36,8 @@ export {
   BaseErrorCode,
   CubeletApiHealthEndpoint,
   CubeletApiRegisterFollowerEndpoint,
-  CubeletApiNodesEndpoint,
-  NodeStatus,
   ResourceDefinition,
   ResourceSchema,
-  CubeletApiApplyEndpoint,
   ResourceType,
   CubeletApiGetEndpoint,
   ContainerStatus,
@@ -50,4 +45,5 @@ export {
   ApiServerApiHealthEndpoint,
   CubeApiServerStatus,
   ApiServerApiRegisterNodeEndpoint,
+  ApiServerApiHeartbeatEndpoint,
 }

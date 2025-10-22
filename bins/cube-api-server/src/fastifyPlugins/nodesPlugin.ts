@@ -2,17 +2,13 @@ import { FastifyInstance, FastifyPluginAsync } from 'fastify'
 import fp from 'fastify-plugin'
 import { EventEmitter } from 'stream'
 import logger from '../logger'
+import { NodeStatus } from 'common-components/dist/api/api-server/node'
 
 const childLogger = logger.child({ plugin: 'nodes' })
 
 const CONTROLLER_INTERVAL_MS = 5_000
 const TIME_BEFORE_NOT_READY_MS = 15_000
 const TIME_BEFORE_RESCHEDULE_MS = 60_000
-
-enum NodeStatus {
-  READY = 'ready',
-  NOT_READY = 'not_ready',
-}
 
 type Node = {
   name: string
@@ -44,16 +40,19 @@ class NodeStore {
         const now = new Date()
         const diff = now.getTime() - node.lastHeartbeat.getTime()
         if (diff > TIME_BEFORE_NOT_READY_MS && node.status !== NodeStatus.NOT_READY) {
-          childLogger.warn(`Node ${node.name} marked as NOT_READY due to missed heartbeats`)
           node.status = NodeStatus.NOT_READY
           this.emitter.emit('update', node)
+          childLogger.warn(`Node ${node.name} marked as NOT_READY due to missed heartbeats`)
+          if (this.getAll().filter((n) => n.status === NodeStatus.READY).length === 0) {
+            childLogger.error(`All nodes are NOT_READY! Cluster is unhealthy!`)
+          }
         }
         if (diff > TIME_BEFORE_RESCHEDULE_MS && !node.hasBeenScheduled) {
+          node.hasBeenScheduled = true
+          this.emitter.emit('reschedule', node)
           childLogger.warn(
             `Resources on node ${node.name} should be rescheduled due to prolonged unavailability`,
           )
-          node.hasBeenScheduled = true
-          this.emitter.emit('reschedule', node)
         }
       }
     }, CONTROLLER_INTERVAL_MS)
@@ -123,7 +122,9 @@ class NodeStore {
       if (node.status !== NodeStatus.READY) {
         childLogger.info(`Node ${node.name} marked as READY after heartbeat`)
       } else {
-        childLogger.debug(`Received heartbeat from node ${node.name}`)
+        childLogger.debug(
+          `Received heartbeat from node ${node.name} (CPU: ${cpuUsagePercent}%, Mem: ${memoryUsageMb}MB)`,
+        )
       }
     }
   }

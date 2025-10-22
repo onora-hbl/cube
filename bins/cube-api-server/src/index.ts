@@ -10,9 +10,12 @@ import { parseArgs, printHelp, printVersion } from './arguments'
 import logger from './logger'
 import Fastify from 'fastify'
 import databasePlugin from './fastifyPlugins/databasePlugin'
-import { hearthbeatHandler, registerNodeHandler } from './endpoints/node'
+import { hearthbeatHandler, listNodes, registerNodeHandler } from './endpoints/node'
 import nodesPlugin from './fastifyPlugins/nodesPlugin'
-import { ApiServerApiHeartbeatEndpoint } from 'common-components/dist/api/api-server/node'
+import {
+  ApiServerApiHeartbeatEndpoint,
+  ApiServerApiListNodesEndpoint,
+} from 'common-components/dist/api/api-server/node'
 
 let isAppReady = false
 
@@ -87,6 +90,15 @@ async function main() {
     schema: ApiServerApiHeartbeatEndpoint.schema,
     handler: async (request, reply) => {
       await hearthbeatHandler(app, request, reply)
+    },
+  })
+
+  app.route({
+    method: ApiServerApiListNodesEndpoint.method,
+    url: ApiServerApiListNodesEndpoint.url,
+    schema: ApiServerApiListNodesEndpoint.schema,
+    handler: async (request, reply) => {
+      await listNodes(app, request, reply)
     },
   })
 

@@ -1,15 +1,8 @@
 import { parseArgs, printHelp, printVersion } from './arguments'
 import logger from './logger'
 import Fastify from 'fastify'
-import commonEndpoints from './endpoints/common'
-import leaderEndpoints from './endpoints/leader'
-import argsPlugin from './fastifyPlugins/argsPlugin'
-import databasePlugin from './fastifyPlugins/databasePlugin'
-import { BaseErrorCode, ServerMode } from 'common-components'
-import nodesPlugin from './fastifyPlugins/nodesPlugin'
-import resourcesPlugin from './fastifyPlugins/resourcesPlugin'
-import schedulerPlugin from './fastifyPlugins/schedulerPlugin'
-import dockerPlugin from './fastifyPlugins/dockerPlugin'
+import { BaseErrorCode } from 'common-components'
+import apiServerPlugin from './fastifyPlugins/apiServerPlugin'
 
 async function main() {
   const args = parseArgs()
@@ -23,6 +16,12 @@ async function main() {
   }
 
   const app = Fastify()
+
+  await app.register(apiServerPlugin, {
+    host: args.options.apiServerHost!,
+    port: args.options.apiServerPort!,
+    name: args.options.name!,
+  })
 
   app.setErrorHandler((error, request, reply) => {
     if (error.validation) {
@@ -41,41 +40,10 @@ async function main() {
     }
   })
 
-  await app.register(argsPlugin, {
-    parsedOptions: {
-      token: args.options.token,
-      mode: args.options.mode,
-      leaderHost: args.options.leaderHost,
-      leaderPort: args.options.leaderPort,
-      port: args.options.port,
-      name: args.options.name,
-    },
-  })
-
-  await app.register(databasePlugin, {
-    filePath: args.options.database,
-  })
-
-  await app.register(nodesPlugin)
-
-  await app.register(resourcesPlugin)
-
-  await app.register(schedulerPlugin)
-
-  await app.register(dockerPlugin)
-
-  await app.register(commonEndpoints)
-  logger.debug('Registered common endpoints')
-
-  if (args.options.mode === ServerMode.LEADER) {
-    await app.register(leaderEndpoints)
-    logger.debug('Registered leader endpoints')
-  }
-
   await app.listen({
     port: args.options.port,
   })
-  logger.info(`Cube server is running in ${args.options.mode} mode on port ${args.options.port}`)
+  logger.info(`Cubelet is running on port ${args.options.port}`)
 }
 
 main().catch((err) => {

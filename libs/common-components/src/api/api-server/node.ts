@@ -55,3 +55,28 @@ export const ApiServerApiHeartbeatEndpoint = defineEndpoint({
   errors: ['NODE_NOT_REGISTERED'] as const,
   schema: ApiServerHearthbeatSchema,
 })
+
+export enum NodeStatus {
+  READY = 'ready',
+  NOT_READY = 'not_ready',
+}
+
+interface ApiServerListNodesResponse {
+  nodes: {
+    name: string
+    status: NodeStatus
+    cpuCores: number
+    memoryMb: number
+    cpuUsagePercent: number
+    memoryUsageMb: number
+    lastHeartbeatTimestamp: number
+  }[]
+}
+
+export const ApiServerApiListNodesEndpoint = defineEndpoint({
+  method: 'GET',
+  url: '/api/nodes',
+  requestBody: undefined,
+  responseBody: {} as ApiServerListNodesResponse,
+  errors: [] as const,
+})
