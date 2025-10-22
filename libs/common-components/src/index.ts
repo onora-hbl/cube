@@ -18,6 +18,7 @@ import {
 import { CubeletApiApplyEndpoint } from './api/kubelet/apply'
 import { CubeletApiGetEndpoint, ContainerStatus } from './api/kubelet/get'
 import { ApiServerApiHealthEndpoint, CubeApiServerStatus } from './api/api-server/health'
+import { ApiServerApiRegisterNodeEndpoint } from './api/api-server/node'
 
 export {
   Option,
@@ -45,4 +46,5 @@ export {
   ResourcesTypes,
   ApiServerApiHealthEndpoint,
   CubeApiServerStatus,
+  ApiServerApiRegisterNodeEndpoint,
 }

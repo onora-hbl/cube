@@ -1,5 +1,6 @@
 import {
   ApiServerApiHealthEndpoint,
+  ApiServerApiRegisterNodeEndpoint,
   BaseErrorCode,
   CubeApiServerStatus,
   InferError,
@@ -9,6 +10,8 @@ import { parseArgs, printHelp, printVersion } from './arguments'
 import logger from './logger'
 import Fastify from 'fastify'
 import databasePlugin from './fastifyPlugins/databasePlugin'
+import { registerNodeHandler } from './endpoints/node'
+import nodesPlugin from './fastifyPlugins/nodesPlugin'
 
 let isAppReady = false
 
@@ -26,6 +29,7 @@ async function main() {
   const app = Fastify()
 
   await app.register(databasePlugin, { filePath: args.options.database })
+  await app.register(nodesPlugin)
 
   app.addHook('onReady', () => {
     isAppReady = true
@@ -64,6 +68,15 @@ async function main() {
         status: CubeApiServerStatus.OK,
       }
       return reply.send(res)
+    },
+  })
+
+  app.route({
+    method: ApiServerApiRegisterNodeEndpoint.method,
+    url: ApiServerApiRegisterNodeEndpoint.url,
+    schema: ApiServerApiRegisterNodeEndpoint.schema,
+    handler: async (request, reply) => {
+      await registerNodeHandler(app, request, reply)
     },
   })
 
