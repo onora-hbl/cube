@@ -1,6 +1,6 @@
 import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 import logger from '../logger'
-import { CubeApiApplyEndpoint, InferRequest, ResourceDefinition } from 'common-components'
+import { CubeletApiApplyEndpoint, InferRequest, ResourceDefinition } from 'common-components'
 
 const childLogger = logger.child({ route: 'apply' })
 
@@ -15,7 +15,7 @@ export const applyHandler = async (
   request: FastifyRequest,
   reply: FastifyReply,
 ) => {
-  const body = request.body as InferRequest<typeof CubeApiApplyEndpoint>
+  const body = request.body as InferRequest<typeof CubeletApiApplyEndpoint>
   if (fastify.resources.find((r) => r.metadata?.name === body.resource.metadata?.name)) {
     childLogger.info(`Applying already existing resource ${body.resource.metadata?.name}`)
     await updateResource(body.resource, fastify)

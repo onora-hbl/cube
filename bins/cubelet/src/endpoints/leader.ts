@@ -1,8 +1,8 @@
 import { FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify'
 import {
-  CubeApiApplyEndpoint,
-  CubeApiNodesEndpoint,
-  CubeApiRegisterFollowerEndpoint,
+  CubeletApiApplyEndpoint,
+  CubeletApiNodesEndpoint,
+  CubeletApiRegisterFollowerEndpoint,
 } from 'common-components'
 import { registerFollowerHandler } from './registerFollower'
 import { nodesHandler } from './nodes'
@@ -21,24 +21,24 @@ const validateToken = (request: FastifyRequest, reply: FastifyReply, done: () =>
 
 const leaderEndpoints: FastifyPluginAsync = async (fastify) => {
   fastify.route({
-    method: CubeApiRegisterFollowerEndpoint.method,
-    url: CubeApiRegisterFollowerEndpoint.url,
-    schema: CubeApiRegisterFollowerEndpoint.schema,
+    method: CubeletApiRegisterFollowerEndpoint.method,
+    url: CubeletApiRegisterFollowerEndpoint.url,
+    schema: CubeletApiRegisterFollowerEndpoint.schema,
     preHandler: validateToken,
     handler: (req, rep) => registerFollowerHandler(fastify, req, rep),
   })
 
   fastify.route({
-    method: CubeApiNodesEndpoint.method,
-    url: CubeApiNodesEndpoint.url,
-    schema: CubeApiNodesEndpoint.schema,
+    method: CubeletApiNodesEndpoint.method,
+    url: CubeletApiNodesEndpoint.url,
+    schema: CubeletApiNodesEndpoint.schema,
     handler: (req, rep) => nodesHandler(fastify, req, rep),
   })
 
   fastify.route({
-    method: CubeApiApplyEndpoint.method,
-    url: CubeApiApplyEndpoint.url,
-    schema: CubeApiApplyEndpoint.schema,
+    method: CubeletApiApplyEndpoint.method,
+    url: CubeletApiApplyEndpoint.url,
+    schema: CubeletApiApplyEndpoint.schema,
     handler: (req, rep) => applyHandler(fastify, req, rep),
   })
 }

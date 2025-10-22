@@ -1,4 +1,4 @@
-import { defineEndpoint } from './common'
+import { defineEndpoint } from '../common'
 
 interface CubeRegisterFollowerRequest {
   port: number
@@ -17,7 +17,7 @@ const CubeRegisterFollowerSchema = {
   },
 } as const
 
-export const CubeApiRegisterFollowerEndpoint = defineEndpoint({
+export const CubeletApiRegisterFollowerEndpoint = defineEndpoint({
   method: 'POST',
   url: '/api/register-follower',
   requestBody: {} as CubeRegisterFollowerRequest,

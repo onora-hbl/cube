@@ -1,6 +1,6 @@
 import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 import logger from '../logger'
-import { ContainerStatus, CubeApiGetEndpoint, InferResponse } from 'common-components'
+import { ContainerStatus, CubeletApiGetEndpoint, InferResponse } from 'common-components'
 import { Resource, ResourceEventType } from '../fastifyPlugins/resourcesPlugin'
 
 const childLogger = logger.child({ route: 'get' })
@@ -51,7 +51,7 @@ function getContainerStatusFromEvents(resource: Resource): ContainerStatus {
 async function getContainerOverview(
   resource: Resource,
   fastify: FastifyInstance,
-): Promise<InferResponse<typeof CubeApiGetEndpoint>['resources'][number]> {
+): Promise<InferResponse<typeof CubeletApiGetEndpoint>['resources'][number]> {
   childLogger.debug(`Getting overview for container ${resource.metadata!.name!}`)
 
   return {
@@ -66,7 +66,7 @@ async function getContainerOverview(
 async function getPodOverview(
   resource: Resource,
   fastify: FastifyInstance,
-): Promise<InferResponse<typeof CubeApiGetEndpoint>['resources'][number]> {
+): Promise<InferResponse<typeof CubeletApiGetEndpoint>['resources'][number]> {
   childLogger.debug(`Getting overview for pod ${resource.metadata!.name!}`)
 
   return {
@@ -83,7 +83,7 @@ async function getPodOverview(
 async function getResourceOverview(
   resource: Resource,
   fastify: FastifyInstance,
-): Promise<InferResponse<typeof CubeApiGetEndpoint>['resources'][number]> {
+): Promise<InferResponse<typeof CubeletApiGetEndpoint>['resources'][number]> {
   switch (resource.type) {
     case 'container':
       return getContainerOverview(resource, fastify)
@@ -97,8 +97,8 @@ export const getHandler = async (
   request: FastifyRequest,
   reply: FastifyReply,
 ) => {
-  const params = CubeApiGetEndpoint.getUrlParams(request.params)
-  const res = [] as InferResponse<typeof CubeApiGetEndpoint>['resources']
+  const params = CubeletApiGetEndpoint.getUrlParams(request.params)
+  const res = [] as InferResponse<typeof CubeletApiGetEndpoint>['resources']
   for (const resource of fastify.resources) {
     if (resource.type !== params.type) continue
     res.push(await getResourceOverview(resource, fastify))

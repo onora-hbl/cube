@@ -1,6 +1,6 @@
 import {
-  CubeApiHealthEndpoint,
-  CubeApiRegisterFollowerEndpoint,
+  CubeletApiHealthEndpoint,
+  CubeletApiRegisterFollowerEndpoint,
   InferError,
   InferRequest,
   InferResponse,
@@ -18,7 +18,7 @@ export const registerFollowerHandler = async (
   request: FastifyRequest,
   reply: FastifyReply,
 ) => {
-  const body: InferRequest<typeof CubeApiRegisterFollowerEndpoint> = request.body as any
+  const body: InferRequest<typeof CubeletApiRegisterFollowerEndpoint> = request.body as any
   // TODO
   const followerHost = 'localhost'
   const followerPort = body.port
@@ -30,30 +30,30 @@ export const registerFollowerHandler = async (
 
   if (fastify.knownNodes.some((node) => node.name === followerName)) {
     childLogger.error(`Node with name ${followerName} is already registered`)
-    const err: InferError<typeof CubeApiRegisterFollowerEndpoint> = {
+    const err: InferError<typeof CubeletApiRegisterFollowerEndpoint> = {
       code: 'NODE_ALREADY_REGISTERED',
       message: 'Node with this name is already registered',
     }
     return reply.status(400).send(err)
   }
 
-  const res = await fetch(`http://${followerHost}:${followerPort}${CubeApiHealthEndpoint.url}`, {
-    method: CubeApiHealthEndpoint.method,
+  const res = await fetch(`http://${followerHost}:${followerPort}${CubeletApiHealthEndpoint.url}`, {
+    method: CubeletApiHealthEndpoint.method,
   })
   if (!res.ok) {
     childLogger.error(
       `Health check to server ${followerName} at ${followerHost}:${followerPort} failed with status ${res.status}`,
     )
-    const err: InferError<typeof CubeApiRegisterFollowerEndpoint> = {
+    const err: InferError<typeof CubeletApiRegisterFollowerEndpoint> = {
       code: 'HEALTH_CHECK_FAILED',
       message: 'Health check failed',
     }
     return reply.status(400).send(err)
   }
-  const healthData: InferResponse<typeof CubeApiHealthEndpoint> = await res.json()
+  const healthData: InferResponse<typeof CubeletApiHealthEndpoint> = await res.json()
   if (healthData.status !== ServerStatus.OK) {
     childLogger.error(`Server ${followerName} at ${followerHost}:${followerPort} is not healthy`)
-    const err: InferError<typeof CubeApiRegisterFollowerEndpoint> = {
+    const err: InferError<typeof CubeletApiRegisterFollowerEndpoint> = {
       code: 'SERVER_NOT_HEALTHY',
       message: 'Server is not healthy',
     }
@@ -63,7 +63,7 @@ export const registerFollowerHandler = async (
     childLogger.error(
       `Server ${followerName} at ${followerHost}:${followerPort} is not in follower mode`,
     )
-    const err: InferError<typeof CubeApiRegisterFollowerEndpoint> = {
+    const err: InferError<typeof CubeletApiRegisterFollowerEndpoint> = {
       code: 'SERVER_NOT_IN_FOLLOWER_MODE',
       message: 'Server is not in follower mode',
     }

@@ -1,6 +1,6 @@
 import {
-  CubeApiHealthEndpoint,
-  CubeApiRegisterFollowerEndpoint,
+  CubeletApiHealthEndpoint,
+  CubeletApiRegisterFollowerEndpoint,
   InferResponse,
   ServerMode,
   ServerStatus,
@@ -37,8 +37,8 @@ export class HealthCheckError extends Error {
 }
 
 async function healthCheckNode(node: Node) {
-  const res = await fetch(`http://${node.host}${CubeApiHealthEndpoint.url}`, {
-    method: CubeApiHealthEndpoint.method,
+  const res = await fetch(`http://${node.host}${CubeletApiHealthEndpoint.url}`, {
+    method: CubeletApiHealthEndpoint.method,
   })
   if (!res.ok) {
     throw new HealthCheckError(
@@ -46,7 +46,7 @@ async function healthCheckNode(node: Node) {
       res.status,
     )
   }
-  const healthData: InferResponse<typeof CubeApiHealthEndpoint> = await res.json()
+  const healthData: InferResponse<typeof CubeletApiHealthEndpoint> = await res.json()
   return healthData
 }
 
@@ -113,12 +113,12 @@ DELETE FROM node WHERE name = ?;
       mode: ServerMode.LEADER,
       status: NodeStatus.UNKNOWN,
     }
-    const body: InferRequest<typeof CubeApiRegisterFollowerEndpoint> = {
+    const body: InferRequest<typeof CubeletApiRegisterFollowerEndpoint> = {
       name: fastify.args.name,
       port: fastify.args.port,
     }
-    const res = await fetch(`http://${leaderNode.host}${CubeApiRegisterFollowerEndpoint.url}`, {
-      method: CubeApiRegisterFollowerEndpoint.method,
+    const res = await fetch(`http://${leaderNode.host}${CubeletApiRegisterFollowerEndpoint.url}`, {
+      method: CubeletApiRegisterFollowerEndpoint.method,
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${fastify.args.token}`,

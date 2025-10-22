@@ -1,7 +1,7 @@
-import { allResourceTypes, ResourceType } from '../manifest/common'
-import { defineEndpoint } from './common'
-import { ContainerResource } from '../manifest/container'
-import { PodResource } from '../manifest/pod'
+import { allResourceTypes, ResourceType } from '../../manifest/common'
+import { defineEndpoint } from '../common'
+import { ContainerResource } from '../../manifest/container'
+import { PodResource } from '../../manifest/pod'
 
 export enum ContainerStatus {
   SCHEDULING = 'scheduling',
@@ -24,7 +24,7 @@ interface CubeGetResponse {
   resources: ResourceOverview[]
 }
 
-export const CubeApiGetEndpoint = defineEndpoint({
+export const CubeletApiGetEndpoint = defineEndpoint({
   method: 'GET',
   url: '/api/get/:type',
   urlParams: {

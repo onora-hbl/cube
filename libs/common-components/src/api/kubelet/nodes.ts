@@ -1,4 +1,4 @@
-import { defineEndpoint } from './common'
+import { defineEndpoint } from '../common'
 import { ServerMode } from './health'
 
 export enum NodeStatus {
@@ -18,7 +18,7 @@ type CubeNodesResponse = {
   nodes: CubeNode[]
 }
 
-export const CubeApiNodesEndpoint = defineEndpoint({
+export const CubeletApiNodesEndpoint = defineEndpoint({
   method: 'GET',
   url: '/api/nodes',
   requestBody: undefined,

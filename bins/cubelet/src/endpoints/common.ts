@@ -1,6 +1,6 @@
 import {
-  CubeApiGetEndpoint,
-  CubeApiHealthEndpoint,
+  CubeletApiGetEndpoint,
+  CubeletApiHealthEndpoint,
   InferError,
   InferResponse,
   ServerMode,
@@ -23,18 +23,18 @@ const commonEndpoints: FastifyPluginAsync = async (fastify) => {
   })
 
   fastify.route({
-    method: CubeApiHealthEndpoint.method,
-    url: CubeApiHealthEndpoint.url,
-    schema: CubeApiHealthEndpoint.schema,
+    method: CubeletApiHealthEndpoint.method,
+    url: CubeletApiHealthEndpoint.url,
+    schema: CubeletApiHealthEndpoint.schema,
     handler: async (_, reply) => {
       if (!isReady) {
-        const err: InferError<typeof CubeApiHealthEndpoint> = {
+        const err: InferError<typeof CubeletApiHealthEndpoint> = {
           code: 'NOT_READY',
           message: 'Server not reported as ready',
         }
         return reply.status(503).send(err)
       }
-      const res: InferResponse<typeof CubeApiHealthEndpoint> = {
+      const res: InferResponse<typeof CubeletApiHealthEndpoint> = {
         status: ServerStatus.OK,
         mode: fastify.args.mode,
       }
@@ -43,9 +43,9 @@ const commonEndpoints: FastifyPluginAsync = async (fastify) => {
   })
 
   fastify.route({
-    method: CubeApiGetEndpoint.method,
-    url: CubeApiGetEndpoint.url,
-    schema: CubeApiGetEndpoint.schema,
+    method: CubeletApiGetEndpoint.method,
+    url: CubeletApiGetEndpoint.url,
+    schema: CubeletApiGetEndpoint.schema,
     handler: (req, rep) => getHandler(fastify, req, rep),
   })
 }

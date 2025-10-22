@@ -1,5 +1,5 @@
 import {
-  CubeApiGetEndpoint,
+  CubeletApiGetEndpoint,
   InferError,
   InferResponse,
   ResourcesTypes,
@@ -18,15 +18,15 @@ export async function getCmd(args: string[], config: Config) {
     console.error(`Unknown resource type: ${type}`)
     process.exit(1)
   }
-  const res = await fetch(`${config.leaderUrl}${CubeApiGetEndpoint.formatUrl({ type })}`, {
-    method: CubeApiGetEndpoint.method,
+  const res = await fetch(`${config.leaderUrl}${CubeletApiGetEndpoint.formatUrl({ type })}`, {
+    method: CubeletApiGetEndpoint.method,
   })
   if (!res.ok) {
-    const err = (await res.json()) as InferError<typeof CubeApiGetEndpoint>
+    const err = (await res.json()) as InferError<typeof CubeletApiGetEndpoint>
     console.error(err.message)
     process.exit(1)
   }
-  const data = (await res.json()) as InferResponse<typeof CubeApiGetEndpoint>
+  const data = (await res.json()) as InferResponse<typeof CubeletApiGetEndpoint>
   const table = data.resources.map((r) => ({
     name: r.name,
     ...r.overview,

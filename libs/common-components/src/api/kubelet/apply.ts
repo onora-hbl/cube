@@ -1,5 +1,5 @@
-import { ResourceDefinition, ResourceSchema } from '../manifest/common'
-import { defineEndpoint } from './common'
+import { ResourceDefinition, ResourceSchema } from '../../manifest/common'
+import { defineEndpoint } from '../common'
 
 interface CubeApplyRequest {
   resource: ResourceDefinition
@@ -20,7 +20,7 @@ interface CubeApplyResponse {
   resource: ResourceDefinition
 }
 
-export const CubeApiApplyEndpoint = defineEndpoint({
+export const CubeletApiApplyEndpoint = defineEndpoint({
   method: 'POST',
   url: '/api/apply',
   requestBody: {} as CubeApplyRequest,

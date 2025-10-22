@@ -1,0 +1,79 @@
+import {
+  ApiServerApiHealthEndpoint,
+  BaseErrorCode,
+  CubeApiServerStatus,
+  InferError,
+  InferResponse,
+} from 'common-components'
+import { parseArgs, printHelp, printVersion } from './arguments'
+import logger from './logger'
+import Fastify from 'fastify'
+import databasePlugin from './fastifyPlugins/databasePlugin'
+
+let isAppReady = false
+
+async function main() {
+  const args = parseArgs()
+  if (args.options.help) {
+    printHelp()
+    process.exit(0)
+  }
+  if (args.options.version) {
+    printVersion()
+    process.exit(0)
+  }
+
+  const app = Fastify()
+
+  await app.register(databasePlugin, { filePath: args.options.database })
+
+  app.addHook('onReady', () => {
+    isAppReady = true
+  })
+
+  app.setErrorHandler((error, request, reply) => {
+    if (error.validation) {
+      const error: { code: BaseErrorCode; message: string } = {
+        code: 'BAD_REQUEST',
+        message: 'Invalid request data',
+      }
+      reply.status(400).send(error)
+    } else {
+      logger.error({ err: error }, `Error in request ${request.method} ${request.url}`)
+      const errorResponse: { code: BaseErrorCode; message: string } = {
+        code: 'INTERNAL_ERROR',
+        message: 'Internal server error',
+      }
+      reply.status(500).send(errorResponse)
+    }
+  })
+
+  app.route({
+    method: ApiServerApiHealthEndpoint.method,
+    url: ApiServerApiHealthEndpoint.url,
+    schema: ApiServerApiHealthEndpoint.schema,
+    handler: async (_, reply) => {
+      if (!isAppReady) {
+        const err: InferError<typeof ApiServerApiHealthEndpoint> = {
+          code: 'NOT_READY',
+          message: 'Server not reported as ready',
+        }
+        return reply.status(503).send(err)
+      }
+      const res: InferResponse<typeof ApiServerApiHealthEndpoint> = {
+        status: CubeApiServerStatus.OK,
+      }
+      return reply.send(res)
+    },
+  })
+
+  await app.listen({
+    port: args.options.port,
+  })
+  logger.info(`Cube api-server is running on port ${args.options.port}`)
+}
+
+main().catch((err) => {
+  logger.error({ err }, 'Fatal error during startup')
+  process.exit(1)
+})

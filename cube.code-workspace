@@ -9,8 +9,12 @@
       "path": "bins/cube"
     },
     {
-      "name": "🛠️ Cube server",
-      "path": "bins/cube-server"
+      "name": "📡 Cube API server",
+      "path": "bins/cube-api-server"
+    },
+    {
+      "name": "🛠️ Cubelet",
+      "path": "bins/cubelet"
     },
     {
       "name": "📦 Common components lib",

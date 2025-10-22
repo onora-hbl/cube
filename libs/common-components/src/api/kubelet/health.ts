@@ -1,4 +1,4 @@
-import { defineEndpoint } from './common'
+import { defineEndpoint } from '../common'
 
 export enum ServerMode {
   LEADER = 'leader',
@@ -14,7 +14,7 @@ type CubeHealthResponse = {
   mode: ServerMode
 }
 
-export const CubeApiHealthEndpoint = defineEndpoint({
+export const CubeletApiHealthEndpoint = defineEndpoint({
   method: 'GET',
   url: '/api/health',
   requestBody: undefined,

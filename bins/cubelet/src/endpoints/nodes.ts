@@ -1,6 +1,6 @@
 import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 import logger from '../logger'
-import { CubeApiNodesEndpoint, InferResponse, NodeStatus } from 'common-components'
+import { CubeletApiNodesEndpoint, InferResponse, NodeStatus } from 'common-components'
 
 const childLogger = logger.child({ route: 'nodes' })
 
@@ -9,7 +9,7 @@ export const nodesHandler = async (
   _: FastifyRequest,
   reply: FastifyReply,
 ) => {
-  const res: InferResponse<typeof CubeApiNodesEndpoint> = {
+  const res: InferResponse<typeof CubeletApiNodesEndpoint> = {
     nodes: [
       {
         name: fastify.args.name,

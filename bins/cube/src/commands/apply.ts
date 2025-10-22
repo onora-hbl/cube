@@ -2,7 +2,7 @@ import { Config } from '../arguments'
 import fs from 'fs'
 import Ajv from 'ajv'
 import {
-  CubeApiApplyEndpoint,
+  CubeletApiApplyEndpoint,
   InferError,
   InferRequest,
   InferResponse,
@@ -18,20 +18,20 @@ export async function applyResource(resource: ResourceDefinition, config: Config
   console.log(
     `Applying resource of type ${resource.type} with name ${resource.metadata?.name || '<unnamed>'}`,
   )
-  const body: InferRequest<typeof CubeApiApplyEndpoint> = { resource }
-  const res = await fetch(`${config.leaderUrl}${CubeApiApplyEndpoint.url}`, {
-    method: CubeApiApplyEndpoint.method,
+  const body: InferRequest<typeof CubeletApiApplyEndpoint> = { resource }
+  const res = await fetch(`${config.leaderUrl}${CubeletApiApplyEndpoint.url}`, {
+    method: CubeletApiApplyEndpoint.method,
     headers: {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(body),
   })
   if (!res.ok) {
-    const error = (await res.json()) as InferError<typeof CubeApiApplyEndpoint>
+    const error = (await res.json()) as InferError<typeof CubeletApiApplyEndpoint>
     console.error(`Failed to apply resource: ${error.message}`)
     return
   }
-  const appliedResource = (await res.json()) as InferResponse<typeof CubeApiApplyEndpoint>
+  const appliedResource = (await res.json()) as InferResponse<typeof CubeletApiApplyEndpoint>
   console.log(`Successfully applied resource: ${JSON.stringify(appliedResource.resource)}`)
 }
 

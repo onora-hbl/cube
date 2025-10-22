@@ -1,4 +1,9 @@
-import { CubeApiHealthEndpoint, InferResponse, ServerMode, ServerStatus } from 'common-components'
+import {
+  CubeletApiHealthEndpoint,
+  InferResponse,
+  ServerMode,
+  ServerStatus,
+} from 'common-components'
 import { parseArgs, printHelp, printVersion } from './arguments'
 import { executeCommand } from './cli'
 
@@ -10,8 +15,8 @@ export class HealthCheckError extends Error {
 }
 
 async function healthCheckNode(host: string) {
-  const res = await fetch(`${host}${CubeApiHealthEndpoint.url}`, {
-    method: CubeApiHealthEndpoint.method,
+  const res = await fetch(`${host}${CubeletApiHealthEndpoint.url}`, {
+    method: CubeletApiHealthEndpoint.method,
   })
   if (!res.ok) {
     throw new HealthCheckError(
@@ -19,7 +24,7 @@ async function healthCheckNode(host: string) {
       res.status,
     )
   }
-  const healthData: InferResponse<typeof CubeApiHealthEndpoint> = await res.json()
+  const healthData: InferResponse<typeof CubeletApiHealthEndpoint> = await res.json()
   return healthData
 }
 

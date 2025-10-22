@@ -1,22 +1,23 @@
 import { type Option, type Options, OptionsError, ParsingError, parseArguments } from './argsParser'
-import { ServerMode, ServerStatus, CubeApiHealthEndpoint } from './protocol/health'
+import { ServerMode, ServerStatus, CubeletApiHealthEndpoint } from './api/kubelet/health'
 import {
   InferRequest,
   InferResponse,
   InferError,
   InferErrorCode,
   BaseErrorCode,
-} from './protocol/common'
-import { CubeApiRegisterFollowerEndpoint } from './protocol/registerFollower'
-import { CubeApiNodesEndpoint, NodeStatus } from './protocol/nodes'
+} from './api/common'
+import { CubeletApiRegisterFollowerEndpoint } from './api/kubelet/registerFollower'
+import { CubeletApiNodesEndpoint, NodeStatus } from './api/kubelet/nodes'
 import {
   ResourceDefinition,
   ResourceSchema,
   ResourceType,
   allResourceTypes as ResourcesTypes,
 } from './manifest/common'
-import { CubeApiApplyEndpoint } from './protocol/apply'
-import { CubeApiGetEndpoint, ContainerStatus } from './protocol/get'
+import { CubeletApiApplyEndpoint } from './api/kubelet/apply'
+import { CubeletApiGetEndpoint, ContainerStatus } from './api/kubelet/get'
+import { ApiServerApiHealthEndpoint, CubeApiServerStatus } from './api/api-server/health'
 
 export {
   Option,
@@ -31,15 +32,17 @@ export {
   InferError,
   InferErrorCode,
   BaseErrorCode,
-  CubeApiHealthEndpoint,
-  CubeApiRegisterFollowerEndpoint,
-  CubeApiNodesEndpoint,
+  CubeletApiHealthEndpoint,
+  CubeletApiRegisterFollowerEndpoint,
+  CubeletApiNodesEndpoint,
   NodeStatus,
   ResourceDefinition,
   ResourceSchema,
-  CubeApiApplyEndpoint,
+  CubeletApiApplyEndpoint,
   ResourceType,
-  CubeApiGetEndpoint,
+  CubeletApiGetEndpoint,
   ContainerStatus,
   ResourcesTypes,
+  ApiServerApiHealthEndpoint,
+  CubeApiServerStatus,
 }
