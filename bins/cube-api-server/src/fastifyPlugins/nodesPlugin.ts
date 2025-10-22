@@ -21,6 +21,8 @@ type Node = {
   cpuCores: number
   memoryMb: number
   hasBeenScheduled: boolean
+  cpuUsagePercent: number
+  memoryUsageMb: number
 }
 
 type NodeRecord = {
@@ -70,6 +72,8 @@ class NodeStore {
         cpuCores: row.cpuCores,
         memoryMb: row.memoryMb,
         hasBeenScheduled: false,
+        cpuUsagePercent: 0,
+        memoryUsageMb: 0,
       }
       this.nodes.set(row.name, node)
       this.emitter.emit('add', node)
@@ -91,6 +95,8 @@ class NodeStore {
       cpuCores,
       memoryMb,
       hasBeenScheduled: false,
+      cpuUsagePercent: 0,
+      memoryUsageMb: 0,
     }
     this.nodes.set(name, node)
     this.emitter.emit('add', node)
@@ -105,12 +111,14 @@ class NodeStore {
     return this.nodes.get(name)
   }
 
-  public heartbeat(name: string) {
+  public heartbeat(name: string, cpuUsagePercent: number, memoryUsageMb: number) {
     const node = this.nodes.get(name)
     if (node) {
       node.lastHeartbeat = new Date()
       node.status = NodeStatus.READY
       node.hasBeenScheduled = false
+      node.cpuUsagePercent = cpuUsagePercent
+      node.memoryUsageMb = memoryUsageMb
       this.emitter.emit('update', node)
       if (node.status !== NodeStatus.READY) {
         childLogger.info(`Node ${node.name} marked as READY after heartbeat`)

@@ -27,3 +27,31 @@ export const ApiServerApiRegisterNodeEndpoint = defineEndpoint({
   errors: ['NODE_ALREADY_REGISTERED'] as const,
   schema: ApiServerRegisterNodeSchema,
 })
+
+interface ApiServerHearthbeatRequest {
+  name: string
+  cpuUsagePercent: number
+  memoryUsageMb: number
+}
+
+const ApiServerHearthbeatSchema = {
+  body: {
+    type: 'object',
+    properties: {
+      name: { type: 'string' },
+      cpuUsagePercent: { type: 'number' },
+      memoryUsageMb: { type: 'number' },
+    },
+    required: ['name', 'cpuUsagePercent', 'memoryUsageMb'],
+    additionalProperties: false,
+  },
+} as const
+
+export const ApiServerApiHeartbeatEndpoint = defineEndpoint({
+  method: 'POST',
+  url: '/api/node/heartbeat',
+  requestBody: {} as ApiServerHearthbeatRequest,
+  responseBody: undefined,
+  errors: ['NODE_NOT_REGISTERED'] as const,
+  schema: ApiServerHearthbeatSchema,
+})
