@@ -1,5 +1,5 @@
 import { SERVER_VERSION } from './constants'
-import { Options, parseArguments, ParsingError, ServerMode } from 'common-components'
+import { Options, parseArguments, ParsingError } from 'common-components'
 import logger from './logger'
 
 const validatePortNumber = (n: number) => n > 0 && n <= 65535

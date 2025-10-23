@@ -1,11 +1,15 @@
-import { InferError, InferRequest, InferResponse } from 'common-components'
 import {
   ApiServerApiHeartbeatEndpoint,
+  InferError,
+  InferRequest,
+  InferResponse,
+} from 'common-components'
+import os from 'os'
+import logger from '../logger'
+import {
   ApiServerApiListNodesEndpoint,
   ApiServerApiRegisterNodeEndpoint,
 } from 'common-components/dist/api/api-server/node'
-import os from 'os'
-import logger from '../logger'
 
 const childLogger = logger.child({ component: 'ApiServer' })
 

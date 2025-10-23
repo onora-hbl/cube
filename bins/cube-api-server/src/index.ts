@@ -1,5 +1,7 @@
 import {
   ApiServerApiHealthEndpoint,
+  ApiServerApiHeartbeatEndpoint,
+  ApiServerApiListNodesEndpoint,
   ApiServerApiRegisterNodeEndpoint,
   BaseErrorCode,
   CubeApiServerStatus,
@@ -12,10 +14,6 @@ import Fastify from 'fastify'
 import databasePlugin from './fastifyPlugins/databasePlugin'
 import { hearthbeatHandler, listNodes, registerNodeHandler } from './endpoints/node'
 import nodesPlugin from './fastifyPlugins/nodesPlugin'
-import {
-  ApiServerApiHeartbeatEndpoint,
-  ApiServerApiListNodesEndpoint,
-} from 'common-components/dist/api/api-server/node'
 
 let isAppReady = false
 
