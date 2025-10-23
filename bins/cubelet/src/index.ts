@@ -1,8 +1,8 @@
 import { parseArgs, printHelp, printVersion } from './arguments'
 import logger from './logger'
-import Fastify from 'fastify'
-import { BaseErrorCode } from 'common-components'
-import apiServerPlugin from './fastifyPlugins/apiServerPlugin'
+import { ApiServer } from './utils/ApiServer'
+
+let apiServer: ApiServer | null = null
 
 async function main() {
   const args = parseArgs()
@@ -15,38 +15,50 @@ async function main() {
     process.exit(0)
   }
 
-  const app = Fastify()
+  apiServer = new ApiServer(
+    args.options.apiServerHost,
+    args.options.apiServerPort,
+    args.options.name,
+  )
 
-  await app.register(apiServerPlugin, {
-    host: args.options.apiServerHost!,
-    port: args.options.apiServerPort!,
-    name: args.options.name!,
-  })
+  await apiServer.initialize()
 
-  app.setErrorHandler((error, request, reply) => {
-    if (error.validation) {
-      const error: { code: BaseErrorCode; message: string } = {
-        code: 'BAD_REQUEST',
-        message: 'Invalid request data',
-      }
-      reply.status(400).send(error)
-    } else {
-      logger.error({ err: error }, `Error in request ${request.method} ${request.url}`)
-      const errorResponse: { code: BaseErrorCode; message: string } = {
-        code: 'INTERNAL_ERROR',
-        message: 'Internal server error',
-      }
-      reply.status(500).send(errorResponse)
-    }
-  })
+  logger.info(`Cubelet is running`)
 
-  await app.listen({
-    port: args.options.port,
-  })
-  logger.info(`Cubelet is running on port ${args.options.port}`)
+  while (true) {
+    await new Promise((resolve) => setTimeout(resolve, 1000))
+  }
 }
 
+function shutdown() {
+  logger.info(`Shutting down Cubelet...`)
+  if (apiServer) {
+    apiServer[Symbol.dispose]()
+  }
+  logger.info(`Cubelet has shut down`)
+}
+
+process.on('SIGINT', () => {
+  shutdown()
+  process.exit(0)
+})
+
+process.on('SIGTERM', () => {
+  shutdown()
+  process.exit(0)
+})
+
+process.on('unhandledRejection', (reason) => {
+  if (reason instanceof Error) {
+    logger.error({ err: reason }, `Unhandled Promise Rejection`)
+  } else {
+    logger.error(`Unhandled Promise Rejection: ${reason}`)
+  }
+  shutdown()
+  process.exit(1)
+})
+
 main().catch((err) => {
-  logger.error({ err }, 'Fatal error during startup')
+  logger.error({ err }, `Fatal error during initialization`)
   process.exit(1)
 })

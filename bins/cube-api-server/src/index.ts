@@ -41,11 +41,11 @@ async function main() {
 
   app.setErrorHandler((error, request, reply) => {
     if (error.validation) {
-      const error: { code: BaseErrorCode; message: string } = {
+      const err: { code: BaseErrorCode; message: string } = {
         code: 'BAD_REQUEST',
-        message: 'Invalid request data',
+        message: 'Invalid request data - ' + JSON.stringify(error.validation),
       }
-      reply.status(400).send(error)
+      reply.status(400).send(err)
     } else {
       logger.error({ err: error }, `Error in request ${request.method} ${request.url}`)
       const errorResponse: { code: BaseErrorCode; message: string } = {

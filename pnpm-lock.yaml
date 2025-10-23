@@ -97,24 +97,12 @@ importers:
 
   bins/cubelet:
     dependencies:
-      '@fastify/cors':
-        specifier: ^11.1.0
-        version: 11.1.0
-      better-sqlite3:
-        specifier: ^12.4.1
-        version: 12.4.1
       common-components:
         specifier: workspace:*
-        version: link:../../libs/common-components
+        version: file:libs/common-components
       dockerode:
         specifier: ^4.0.9
         version: 4.0.9
-      fastify:
-        specifier: ^5.6.1
-        version: 5.6.1
-      fastify-plugin:
-        specifier: ^5.1.0
-        version: 5.1.0
       node-fetch:
         specifier: ^3.3.2
         version: 3.3.2
@@ -125,15 +113,9 @@ importers:
         specifier: ^13.1.2
         version: 13.1.2
     devDependencies:
-      '@types/better-sqlite3':
-        specifier: ^7.6.13
-        version: 7.6.13
       '@types/dockerode':
         specifier: ^3.3.44
         version: 3.3.44
-      '@types/minimist':
-        specifier: ^1.2.5
-        version: 1.2.5
       '@types/node':
         specifier: ^24.8.0
         version: 24.8.1
@@ -373,9 +355,6 @@ packages:
   '@fastify/ajv-compiler@4.0.4':
     resolution: {integrity: sha512-VfPkOSmob5YqH4ZUYW4ESVV5dDNbmtNEKJADFm43Hn/T48RxTZjUIBouadRDb4M/qr8g5bAxxu40/MGxvCPDrw==}
 
-  '@fastify/cors@11.1.0':
-    resolution: {integrity: sha512-sUw8ed8wP2SouWZTIbA7V2OQtMNpLj2W6qJOYhNdcmINTu6gsxVYXjQiM9mdi8UUDlcoDDJ/W2syPo1WB2QjYA==}
-
   '@fastify/error@4.2.0':
     resolution: {integrity: sha512-RSo3sVDXfHskiBZKBPRgnQTtIqpi/7zhJOEmAxCiBcM7d0uwdGdxLlsCaLzGs8v8NnxIRlfG0N51p5yFaOentQ==}
 
@@ -604,6 +583,9 @@ packages:
   combined-stream@1.0.8:
     resolution: {integrity: sha512-FQN4MRfuJeHf7cBbBMJFXhKSDq+2kAArBlmRBvcvFE5BB1HZKXtSFASDhdlz9zOYwxh8lDdnvmMOe/+5cdoEdg==}
     engines: {node: '>= 0.8'}
+
+  common-components@file:libs/common-components:
+    resolution: {directory: libs/common-components, type: directory}
 
   concat-map@0.0.1:
     resolution: {integrity: sha512-/Srv4dswyQNBfohGpz9o6Yb3Gz3SrUDqBH5rTuhGR7ahtlbYKnVxw2bCFMRljaA7EXHaXZ8wsHdodFvbkhKmqg==}
@@ -1472,11 +1454,6 @@ snapshots:
       ajv-formats: 3.0.1(ajv@8.17.1)
       fast-uri: 3.1.0
 
-  '@fastify/cors@11.1.0':
-    dependencies:
-      fastify-plugin: 5.1.0
-      toad-cache: 3.7.0
-
   '@fastify/error@4.2.0': {}
 
   '@fastify/fast-json-stringify-compiler@5.0.3':
@@ -1707,6 +1684,8 @@ snapshots:
   combined-stream@1.0.8:
     dependencies:
       delayed-stream: 1.0.0
+
+  common-components@file:libs/common-components: {}
 
   concat-map@0.0.1: {}
 

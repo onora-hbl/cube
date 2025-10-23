@@ -4,14 +4,14 @@ import {
   ApiServerApiListNodesEndpoint,
   ApiServerApiRegisterNodeEndpoint,
 } from 'common-components/dist/api/api-server/node'
-import { FastifyPluginAsync } from 'fastify'
-import fp from 'fastify-plugin'
 import os from 'os'
 import logger from '../logger'
 
+const childLogger = logger.child({ component: 'ApiServer' })
+
 const HEARTBEAT_INTERVAL_MS = 10_000
 
-class ApiServer {
+export class ApiServer {
   private host: string
   private port: number
   private name: string
@@ -42,7 +42,7 @@ class ApiServer {
       const error = (await res.json()) as InferError<typeof ApiServerApiHeartbeatEndpoint>
       throw new Error(`Failed to send heartbeat: ${error.code} - ${error.message}`)
     }
-    logger.debug(`Sent heartbeat to API server for node "${this.name}"`)
+    childLogger.debug(`Sent heartbeat to API server for node "${this.name}"`)
   }
 
   async initialize() {
@@ -72,7 +72,7 @@ class ApiServer {
         >
         throw new Error(`Failed to register node: ${error.code} - ${error.message}`)
       }
-      logger.info(`Registered node "${this.name}" with API server`)
+      childLogger.info(`Registered node "${this.name}" with API server`)
     }
     await this.sendHeartbeat()
     this.heartbeatInterval = setInterval(() => this.sendHeartbeat(), HEARTBEAT_INTERVAL_MS)
@@ -84,25 +84,3 @@ class ApiServer {
     }
   }
 }
-
-declare module 'fastify' {
-  interface FastifyInstance {
-    apiServer: ApiServer
-  }
-}
-
-const apiServerPlugin: FastifyPluginAsync<{ host: string; port: number; name: string }> = async (
-  fastify,
-  options,
-) => {
-  const apiServer = new ApiServer(options.host, options.port, options.name)
-  fastify.decorate('apiServer', apiServer)
-
-  fastify.addHook('onClose', async (fastifyInstance) => {
-    fastifyInstance.apiServer[Symbol.dispose]()
-  })
-
-  await apiServer.initialize()
-}
-
-export default fp(apiServerPlugin)

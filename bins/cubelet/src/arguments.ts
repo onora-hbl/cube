@@ -5,12 +5,6 @@ import logger from './logger'
 const validatePortNumber = (n: number) => n > 0 && n <= 65535
 
 const options: Options = {
-  port: {
-    type: 'number',
-    default: 4243,
-    validate: validatePortNumber,
-    alias: 'p',
-  },
   apiServerHost: {
     type: 'string',
     required: true,
