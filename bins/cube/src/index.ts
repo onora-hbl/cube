@@ -1,9 +1,4 @@
-import {
-  CubeletApiHealthEndpoint,
-  InferResponse,
-  ServerMode,
-  ServerStatus,
-} from 'common-components'
+import { ApiServerApiHealthEndpoint, CubeApiServerStatus, InferResponse } from 'common-components'
 import { parseArgs, printHelp, printVersion } from './arguments'
 import { executeCommand } from './cli'
 
@@ -14,9 +9,9 @@ export class HealthCheckError extends Error {
   }
 }
 
-async function healthCheckNode(host: string) {
-  const res = await fetch(`${host}${CubeletApiHealthEndpoint.url}`, {
-    method: CubeletApiHealthEndpoint.method,
+async function healthCheckApiServer(host: string) {
+  const res = await fetch(`${host}${ApiServerApiHealthEndpoint.url}`, {
+    method: ApiServerApiHealthEndpoint.method,
   })
   if (!res.ok) {
     throw new HealthCheckError(
@@ -24,8 +19,14 @@ async function healthCheckNode(host: string) {
       res.status,
     )
   }
-  const healthData: InferResponse<typeof CubeletApiHealthEndpoint> = await res.json()
+  const healthData: InferResponse<typeof ApiServerApiHealthEndpoint> = await res.json()
   return healthData
+}
+
+let verbose = false
+
+export function isVerbose() {
+  return verbose
 }
 
 async function main() {
@@ -38,17 +39,15 @@ async function main() {
     printVersion()
     process.exit(0)
   }
+  if (args.options.verbose) {
+    verbose = true
+  }
 
   try {
-    const healthData = await healthCheckNode(args.config.leaderUrl)
-    if (healthData.status !== ServerStatus.OK) {
+    const healthData = await healthCheckApiServer(args.config.apiServerUrl)
+    if (healthData.status !== CubeApiServerStatus.OK) {
       throw new HealthCheckError(
-        `Health check to node at ${args.config.leaderUrl} returned status ${healthData.status}`,
-      )
-    }
-    if (healthData.mode !== ServerMode.LEADER) {
-      throw new HealthCheckError(
-        `Node at ${args.config.leaderUrl} is not in LEADER mode (current mode: ${healthData.mode})`,
+        `Health check to api server at ${args.config.apiServerUrl} returned status ${healthData.status}`,
       )
     }
   } catch (e) {
@@ -61,7 +60,10 @@ async function main() {
     }
   }
 
-  // console.log(`Health check to leader succeeded`)
+  if (isVerbose()) {
+    console.log('Health check to api server succeeded')
+  }
+
   await executeCommand(args.args, args.config)
 
   process.exit(0)

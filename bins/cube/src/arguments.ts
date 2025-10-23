@@ -17,20 +17,23 @@ const options: Options = {
   },
   version: {
     type: 'boolean',
+  },
+  verbose: {
+    type: 'boolean',
     alias: 'v',
   },
 }
 
 export type Config = {
-  leaderUrl: string
+  apiServerUrl: string
 }
 
 function validateConfig(config: any): Config {
   if (typeof config !== 'object' || config === null) {
     throw new Error('Config must be an object')
   }
-  if (typeof config.leaderUrl !== 'string' || !config.leaderUrl.startsWith('http')) {
-    throw new Error('Config must have a valid leaderUrl string')
+  if (typeof config.apiServerUrl !== 'string' || !config.apiServerUrl.startsWith('http')) {
+    throw new Error('Config must have a valid apiServerUrl string')
   }
   return config
 }
@@ -71,7 +74,8 @@ export function printHelp() {
   console.log(`${beforeOption} [options]`)
   const padding = String(' ').repeat(beforeOption.length)
   console.log(`${padding} -h, --help           Show help`)
-  console.log(`${padding} -v, --version        Show version`)
+  console.log(`${padding} --version            Show version`)
+  console.log(`${padding} -v, --verbose        Enable verbose output`)
   console.log(`${padding} -c, --config <path>  Path to config file (default: ~/.cube/config.json)`)
 }
 
