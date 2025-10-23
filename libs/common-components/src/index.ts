@@ -20,6 +20,7 @@ import {
   ApiServerApiRegisterNodeEndpoint,
   ApiServerApiHeartbeatEndpoint,
 } from './api/api-server/node'
+import { ApiServerApiApplyEndpoint } from './api/api-server/resources'
 
 export {
   Option,
@@ -46,4 +47,5 @@ export {
   CubeApiServerStatus,
   ApiServerApiRegisterNodeEndpoint,
   ApiServerApiHeartbeatEndpoint,
+  ApiServerApiApplyEndpoint,
 }
