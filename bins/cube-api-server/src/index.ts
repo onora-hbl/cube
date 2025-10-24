@@ -1,4 +1,5 @@
 import {
+  ApiServerApiApplyEndpoint,
   ApiServerApiHealthEndpoint,
   ApiServerApiHeartbeatEndpoint,
   ApiServerApiListNodesEndpoint,
@@ -14,6 +15,8 @@ import Fastify from 'fastify'
 import databasePlugin from './fastifyPlugins/databasePlugin'
 import { hearthbeatHandler, listNodes, registerNodeHandler } from './endpoints/node'
 import nodesPlugin from './fastifyPlugins/nodesPlugin'
+import { applyHandler } from './endpoints/resource'
+import resourcesPlugin from './fastifyPlugins/resourcesPlugin'
 
 let isAppReady = false
 
@@ -32,6 +35,7 @@ async function main() {
 
   await app.register(databasePlugin, { filePath: args.options.database })
   await app.register(nodesPlugin)
+  await app.register(resourcesPlugin)
 
   app.addHook('onReady', () => {
     isAppReady = true
@@ -97,6 +101,15 @@ async function main() {
     schema: ApiServerApiListNodesEndpoint.schema,
     handler: async (request, reply) => {
       await listNodes(app, request, reply)
+    },
+  })
+
+  app.route({
+    method: ApiServerApiApplyEndpoint.method,
+    url: ApiServerApiApplyEndpoint.url,
+    schema: ApiServerApiApplyEndpoint.schema,
+    handler: async (request, reply) => {
+      await applyHandler(app, request, reply)
     },
   })
 

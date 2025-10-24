@@ -18,7 +18,7 @@ import {
   ApiServerApiHeartbeatEndpoint,
   ApiServerApiListNodesEndpoint,
 } from './api/api-server/node'
-import { ApiServerApiApplyEndpoint } from './api/api-server/resources'
+import { ApiServerApiApplyEndpoint, ApplyAction } from './api/api-server/resources'
 
 export {
   Option,
@@ -41,4 +41,5 @@ export {
   ApiServerApiHeartbeatEndpoint,
   ApiServerApiApplyEndpoint,
   ApiServerApiListNodesEndpoint,
+  ApplyAction,
 }

@@ -16,7 +16,7 @@ const ApiServerApplySchema = {
   },
 } as const
 
-enum ApplyAction {
+export enum ApplyAction {
   CREATE = 'create',
   UPDATE = 'update',
 }

@@ -11,6 +11,7 @@ const TIME_BEFORE_NOT_READY_MS = 15_000
 const TIME_BEFORE_RESCHEDULE_MS = 60_000
 
 type Node = {
+  uuid: string
   name: string
   status: NodeStatus
   lastHeartbeat: Date
@@ -22,6 +23,7 @@ type Node = {
 }
 
 type NodeRecord = {
+  uuid: string
   name: string
   cpuCores: number
   memoryMb: number
@@ -60,11 +62,12 @@ class NodeStore {
 
   public async loadAll() {
     const rows = this.fastify.db
-      .prepare(`SELECT name, cpu_cores as cpuCores, memory_mb as memoryMb FROM nodes;`)
+      .prepare(`SELECT uuid, name, cpu_cores as cpuCores, memory_mb as memoryMb FROM nodes;`)
       .all() as NodeRecord[]
     childLogger.debug(`Loading ${rows.length} nodes from database`)
     for (const row of rows) {
       const node: Node = {
+        uuid: row.uuid,
         name: row.name,
         status: NodeStatus.NOT_READY,
         lastHeartbeat: new Date(),
@@ -84,10 +87,12 @@ class NodeStore {
     if (existingNode) {
       return false
     }
+    const uuid = crypto.randomUUID()
     this.fastify.db
-      .prepare(`INSERT INTO nodes (name, cpu_cores, memory_mb) VALUES (?, ?, ?);`)
-      .run(name, cpuCores, memoryMb)
+      .prepare(`INSERT INTO nodes (uuid, name, cpu_cores, memory_mb) VALUES (?, ?, ?, ?);`)
+      .run(uuid, name, cpuCores, memoryMb)
     const node: Node = {
+      uuid,
       name,
       status: NodeStatus.NOT_READY,
       lastHeartbeat: new Date(),

@@ -32,11 +32,13 @@ export type ResourceDefinition =
       type: typeof ContainerResource.type
       metadata?: ResourceMetadataDefinition
       spec: typeof ContainerResource.specType
+      status: typeof ContainerResource.status
     }
   | {
       type: typeof PodResource.type
       metadata?: ResourceMetadataDefinition
       spec: typeof PodResource.specType
+      status: typeof PodResource.status
     }
 
 export const allResourceTypes = allResources.map((r) => r.type)
