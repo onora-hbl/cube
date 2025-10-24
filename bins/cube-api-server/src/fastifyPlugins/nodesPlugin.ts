@@ -115,6 +115,10 @@ class NodeStore {
     return this.nodes.get(name)
   }
 
+  public getByUuid(uuid: string): Node | undefined {
+    return Array.from(this.nodes.values()).find((node) => node.uuid === uuid)
+  }
+
   public heartbeat(name: string, cpuUsagePercent: number, memoryUsageMb: number) {
     const node = this.nodes.get(name)
     if (node) {

@@ -1,4 +1,9 @@
-import { ResourceDefinition, ResourceSchema, ResourceType } from '../../manifest/common'
+import {
+  allResourceTypes,
+  ResourceDefinition,
+  ResourceSchema,
+  ResourceType,
+} from '../../manifest/common'
 import { defineEndpoint } from '../common'
 
 interface ApiServerApplyRequest {
@@ -34,4 +39,22 @@ export const ApiServerApiApplyEndpoint = defineEndpoint({
   responseBody: {} as ApiServerApplyResponse,
   errors: ['IMMUTABLE_SPEC', 'RESOURCE_VERSION_CONFLICT'] as const,
   schema: ApiServerApplySchema,
+})
+
+interface ApiServerListResponse {
+  resourcesOverview: Record<string, string>[]
+}
+
+export const ApiServerApiListEndpoint = defineEndpoint({
+  method: 'GET',
+  url: '/api/resources/:type/list',
+  urlParams: {
+    type: {
+      type: 'string',
+      validator: (value: string) => allResourceTypes.includes(value as ResourceType),
+    },
+  },
+  requestBody: undefined,
+  responseBody: {} as ApiServerListResponse,
+  errors: [] as const,
 })

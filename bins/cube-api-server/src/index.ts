@@ -2,6 +2,7 @@ import {
   ApiServerApiApplyEndpoint,
   ApiServerApiHealthEndpoint,
   ApiServerApiHeartbeatEndpoint,
+  ApiServerApiListEndpoint,
   ApiServerApiListNodesEndpoint,
   ApiServerApiRegisterNodeEndpoint,
   BaseErrorCode,
@@ -15,7 +16,7 @@ import Fastify from 'fastify'
 import databasePlugin from './fastifyPlugins/databasePlugin'
 import { hearthbeatHandler, listNodes, registerNodeHandler } from './endpoints/node'
 import nodesPlugin from './fastifyPlugins/nodesPlugin'
-import { applyHandler } from './endpoints/resource'
+import { applyHandler, listHandler } from './endpoints/resource'
 import resourcesPlugin from './fastifyPlugins/resourcesPlugin'
 
 let isAppReady = false
@@ -110,6 +111,15 @@ async function main() {
     schema: ApiServerApiApplyEndpoint.schema,
     handler: async (request, reply) => {
       await applyHandler(app, request, reply)
+    },
+  })
+
+  app.route({
+    method: ApiServerApiListEndpoint.method,
+    url: ApiServerApiListEndpoint.url,
+    schema: ApiServerApiListEndpoint.schema,
+    handler: async (request, reply) => {
+      await listHandler(app, request, reply)
     },
   })
 

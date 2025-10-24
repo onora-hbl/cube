@@ -19,6 +19,7 @@ import {
   ApiServerApiListNodesEndpoint,
 } from './api/api-server/node'
 import { ApiServerApiApplyEndpoint, ApplyAction } from './api/api-server/resources'
+import { ApiServerApiListEndpoint } from './api/api-server/resources'
 
 export {
   Option,
@@ -42,4 +43,5 @@ export {
   ApiServerApiApplyEndpoint,
   ApiServerApiListNodesEndpoint,
   ApplyAction,
+  ApiServerApiListEndpoint,
 }

@@ -34,7 +34,7 @@ type ResourceMetadata = {
   creationTime: Date
 }
 
-type Resource = {
+export type Resource = {
   uuid: string
   nodeUuid?: string
   resourceType: ResourceType
