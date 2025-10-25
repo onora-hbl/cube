@@ -1,8 +1,10 @@
 import { parseArgs, printHelp, printVersion } from './arguments'
 import logger from './logger'
 import { ApiServer } from './utils/ApiServer'
+import { EventBus } from './utils/EventBus'
 
 let apiServer: ApiServer | null = null
+let eventBus: EventBus | null = null
 
 async function main() {
   const args = parseArgs()
@@ -20,8 +22,10 @@ async function main() {
     args.options.apiServerPort,
     args.options.name,
   )
-
   await apiServer.initialize()
+
+  eventBus = new EventBus(args.options.apiServerHost, args.options.apiServerPort, args.options.name)
+  await eventBus.connect()
 
   logger.info(`Cubelet is running`)
 
@@ -34,6 +38,9 @@ function shutdown() {
   logger.info(`Shutting down Cubelet...`)
   if (apiServer) {
     apiServer[Symbol.dispose]()
+  }
+  if (eventBus) {
+    eventBus[Symbol.dispose]()
   }
   logger.info(`Cubelet has shut down`)
 }

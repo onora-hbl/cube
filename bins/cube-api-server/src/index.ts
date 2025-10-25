@@ -18,6 +18,8 @@ import { hearthbeatHandler, listNodes, registerNodeHandler } from './endpoints/n
 import nodesPlugin from './fastifyPlugins/nodesPlugin'
 import { applyHandler, listHandler } from './endpoints/resource'
 import resourcesPlugin from './fastifyPlugins/resourcesPlugin'
+import eventBusPlugin from './fastifyPlugins/eventBusPlugin'
+import fastifySocketIO from 'fastify-socket.io'
 
 let isAppReady = false
 
@@ -34,9 +36,12 @@ async function main() {
 
   const app = Fastify()
 
+  await app.register(fastifySocketIO)
+
   await app.register(databasePlugin, { filePath: args.options.database })
   await app.register(nodesPlugin)
   await app.register(resourcesPlugin)
+  await app.register(eventBusPlugin)
 
   app.addHook('onReady', () => {
     isAppReady = true
@@ -122,6 +127,8 @@ async function main() {
       await listHandler(app, request, reply)
     },
   })
+
+  logger.debug('Routes tree:\n' + app.printRoutes())
 
   await app.listen({
     port: args.options.port,

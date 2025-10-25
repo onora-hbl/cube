@@ -20,6 +20,13 @@ import {
 } from './api/api-server/node'
 import { ApiServerApiApplyEndpoint, ApplyAction } from './api/api-server/resources'
 import { ApiServerApiListEndpoint } from './api/api-server/resources'
+import {
+  InferMessageContent,
+  InferMessageResponse,
+  ErrorNotificationCodes,
+  EventBusErrorNotification,
+} from './socket/common'
+import { EventBusSubscribeRequest } from './socket/node'
 
 export {
   Option,
@@ -44,4 +51,9 @@ export {
   ApiServerApiListNodesEndpoint,
   ApplyAction,
   ApiServerApiListEndpoint,
+  InferMessageContent,
+  InferMessageResponse,
+  ErrorNotificationCodes,
+  EventBusErrorNotification,
+  EventBusSubscribeRequest,
 }
