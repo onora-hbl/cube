@@ -269,6 +269,21 @@ class ResourceStore {
     return Array.from(this.resources.values())
   }
 
+  public createDefinitionFromResource(resource: Resource): ResourceDefinition {
+    return {
+      type: resource.resourceType,
+      spec: resource.spec,
+      metadata: {
+        name: resource.metadata.name,
+        labels: resource.metadata.labels,
+        resourceVersion: resource.metadata.resourceVersion,
+        generation: resource.metadata.generation,
+        creationTimestamp: resource.metadata.creationTime.toISOString(),
+      },
+      status: resource.status,
+    } as ResourceDefinition
+  }
+
   public on(event: 'add' | 'update', listener: (resource: Resource) => void) {
     this.emitter.on(event, listener)
   }

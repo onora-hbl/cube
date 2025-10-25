@@ -2,16 +2,21 @@ import { io } from 'socket.io-client'
 import logger from '../logger'
 import {
   EventBusErrorNotification,
+  EventBusInitializedNotification,
   EventBusSubscribeRequest,
+  EventBusUpdateResourceNotification,
   InferMessageContent,
   InferMessageResponse,
+  ResourceDefinition,
 } from 'common-components'
+import { EventEmitter } from 'stream'
 
 export class EventBus {
   private host: string
   private port: number
   private name: string
   private socket: ReturnType<typeof io> | null = null
+  private emitter = new EventEmitter()
 
   constructor(host: string, port: number, name: string) {
     this.host = host
@@ -49,15 +54,42 @@ export class EventBus {
         logger.error(`Received EventBus error notification: ${body.code} - ${body.message}`)
       },
     )
+    socket.on(
+      EventBusUpdateResourceNotification.message,
+      (body: InferMessageContent<typeof EventBusUpdateResourceNotification>) => {
+        this.receiveResource(body.resource)
+      },
+    )
+    socket.on(
+      EventBusInitializedNotification.message,
+      (body: InferMessageContent<typeof EventBusInitializedNotification>) => {
+        for (const resource of body.resources) {
+          this.receiveResource(resource)
+        }
+        this.emitter.emit('initialized')
+      },
+    )
     socket.on('disconnect', () => {
       logger.warn(`Disconnected from EventBus at ${this.url}`)
     })
     socket.connect()
   }
 
+  private receiveResource(resource: ResourceDefinition) {
+    logger.debug(
+      `Received resource update from EventBus: ${resource.type}/${resource.metadata!.name}`,
+    )
+    this.emitter.emit('resource', resource)
+  }
+
+  public on(event: 'resource' | 'initialized', listener: (data?: any) => void) {
+    this.emitter.on(event, listener)
+  }
+
   [Symbol.dispose]() {
     if (this.socket) {
       this.socket.disconnect()
     }
+    this.emitter.removeAllListeners()
   }
 }
