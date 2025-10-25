@@ -10,7 +10,7 @@ const CONTROLLER_INTERVAL_MS = 5_000
 const TIME_BEFORE_NOT_READY_MS = 15_000
 const TIME_BEFORE_RESCHEDULE_MS = 60_000
 
-type Node = {
+export type Node = {
   uuid: string
   name: string
   status: NodeStatus

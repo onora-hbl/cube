@@ -124,14 +124,31 @@ class ResourceStore {
     }
   }
 
+  private getSchedulingStatusForResourceType(
+    resourceType: ResourceType,
+  ): ResourceDefinition['status'] {
+    switch (resourceType) {
+      case 'pod':
+        return PodStatus.SCHEDULING as unknown as ResourceDefinition['status']
+      case 'container':
+        return ContainerStatus.SCHEDULING as unknown as ResourceDefinition['status']
+    }
+  }
+
+  private getScheduledStatusForResourceType(
+    resourceType: ResourceType,
+  ): ResourceDefinition['status'] {
+    switch (resourceType) {
+      case 'pod':
+        return PodStatus.STARTING as unknown as ResourceDefinition['status']
+      case 'container':
+        return ContainerStatus.PULLING as unknown as ResourceDefinition['status']
+    }
+  }
+
   public async registerNewResource(resource: ResourceDefinition, uuid: string, name: string) {
     const now = new Date()
-    const status =
-      resource.type === 'pod'
-        ? PodStatus.PENDING
-        : resource.type === 'container'
-          ? ContainerStatus.SCHEDULING
-          : 'UNDEFINED'
+    const status = this.getSchedulingStatusForResourceType(resource.type)
     this.fastify.db
       .prepare(
         `INSERT INTO resources (uuid, resource_type, name, labels_json, spec_json, resource_version, generation, status, creation_timestamp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);`,
@@ -164,7 +181,7 @@ class ResourceStore {
       uuid,
       resourceType: resource.type,
       spec: resource.spec,
-      status: status as unknown as ResourceDefinition['status'],
+      status,
       metadata: {
         name,
         labels: resource.metadata?.labels || {},
@@ -187,11 +204,72 @@ class ResourceStore {
     this.emitter.emit('add', newResource)
   }
 
+  public addEventToResource(
+    resourceUuid: string,
+    event: Omit<ResourceEvent, 'uuid' | 'timestamp'>,
+  ): ResourceEvent {
+    const resource = this.getAll().find((res) => res.uuid === resourceUuid)
+    if (!resource) {
+      throw new Error(`Resource with uuid ${resourceUuid} not found`)
+    }
+    const eventUuid = crypto.randomUUID()
+    const now = new Date()
+    this.fastify.db
+      .prepare(
+        `INSERT INTO resources_events (uuid, resource_uuid, event_type, reason, message, timestamp) VALUES (?, ?, ?, ?, ?, ?);`,
+      )
+      .run(eventUuid, resourceUuid, event.type, event.reason, event.message, now.toISOString())
+    const newEvent: ResourceEvent = {
+      uuid: eventUuid,
+      resourceUuid,
+      type: event.type,
+      reason: event.reason,
+      message: event.message,
+      timestamp: now,
+    }
+    resource.events.push(newEvent)
+    this.emitter.emit('update', resource)
+    return newEvent
+  }
+
+  public updateResourceNode(resourceUuid: string, nodeUuid: string | undefined) {
+    const resource = this.getAll().find((res) => res.uuid === resourceUuid)
+    if (!resource) {
+      throw new Error(`Resource with uuid ${resourceUuid} not found`)
+    }
+    const node =
+      nodeUuid != null
+        ? this.fastify.nodeStore.getAll().find((n) => n.uuid === nodeUuid)
+        : undefined
+    if (!node && nodeUuid != null) {
+      throw new Error(`Node with uuid ${nodeUuid} not found`)
+    }
+    const status =
+      nodeUuid != null
+        ? this.getScheduledStatusForResourceType(resource.resourceType)
+        : this.getSchedulingStatusForResourceType(resource.resourceType)
+    this.fastify.db
+      .prepare(`UPDATE resources SET node_uuid = ?, status = ? WHERE uuid = ?;`)
+      .run(nodeUuid, status, resource.uuid)
+    this.addEventToResource(resource.uuid, {
+      resourceUuid: resource.uuid,
+      type: nodeUuid != null ? 'RESOURCE_SCHEDULED' : 'RESOURCE_UNSCHEDULED',
+      reason: nodeUuid != null ? 'Resource scheduled' : 'Resource unscheduled',
+      message:
+        nodeUuid != null
+          ? `Resource ${resource.metadata.name} has been scheduled to node ${node?.name}.`
+          : `Resource ${resource.metadata.name} has been unscheduled from its node.`,
+    })
+    resource.status = status
+    resource.nodeUuid = nodeUuid
+    this.emitter.emit('update', resource)
+  }
+
   public getAll(): Resource[] {
     return Array.from(this.resources.values())
   }
 
-  public on(event: 'add', listener: (resource: Resource) => void) {
+  public on(event: 'add' | 'update', listener: (resource: Resource) => void) {
     this.emitter.on(event, listener)
   }
 

@@ -20,6 +20,7 @@ import { applyHandler, listHandler } from './endpoints/resource'
 import resourcesPlugin from './fastifyPlugins/resourcesPlugin'
 import eventBusPlugin from './fastifyPlugins/eventBusPlugin'
 import fastifySocketIO from 'fastify-socket.io'
+import schedulerPlugin, { SchedulerType } from './fastifyPlugins/schedulerPlugin'
 
 let isAppReady = false
 
@@ -42,6 +43,7 @@ async function main() {
   await app.register(nodesPlugin)
   await app.register(resourcesPlugin)
   await app.register(eventBusPlugin)
+  await app.register(schedulerPlugin, { type: SchedulerType.RANDOM })
 
   app.addHook('onReady', () => {
     isAppReady = true

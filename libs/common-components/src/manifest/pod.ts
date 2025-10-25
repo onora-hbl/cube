@@ -31,7 +31,8 @@ export const _PodSpecSchema: JSONSchemaType<PodSpec> = {
 export const PodSpecSchema = _PodSpecSchema as any
 
 export enum PodStatus {
-  PENDING = 'pending',
+  SCHEDULING = 'scheduling',
+  STARTING = 'starting',
   RUNNING = 'running',
   SUCCEEDED = 'succeeded',
   FAILED = 'failed',
