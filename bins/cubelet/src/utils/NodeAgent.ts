@@ -1,49 +1,27 @@
-import { ResourceDefinition } from 'common-components'
 import { EventBus } from './EventBus'
 import logger from '../logger'
 import { DockerManager } from './DockerManager'
-import { Reconciler } from './Reconciler'
+import { PodResourceDefinition } from 'common-components/dist/manifest/pod'
+import { PodReconciler } from './PodReconciler'
 
 const childLogger = logger.child({ component: 'NodeAgent' })
 
 export class NodeAgent {
-  private reconcilers = new Map<string, Reconciler>()
-  constructor(
-    private docker: DockerManager,
-    private eventBus: EventBus,
-  ) {
-    eventBus.on('resource', (res) => this.onResourceUpdated(res))
+  private podReconciliers = new Map<string, PodReconciler>()
+  private docker = new DockerManager()
+  constructor(private eventBus: EventBus) {
+    eventBus.on('pod.update', (pod) => this.onPodUpdate(pod))
   }
 
-  async initialize(initialResources: ResourceDefinition[]) {
-    for (const res of initialResources) {
-      this.onResourceUpdated(res)
-    }
-  }
-
-  async onResourceUpdated(resource: ResourceDefinition) {
-    if (resource.type !== 'container') {
-      return
-    }
-    let reconciler = this.reconcilers.get(resource.metadata!.name!)
+  async onPodUpdate(pod: PodResourceDefinition) {
+    let reconciler = this.podReconciliers.get(pod.metadata!.name!)
     if (!reconciler) {
-      reconciler = new Reconciler(resource, this.docker, this.eventBus)
-      this.reconcilers.set(resource.metadata!.name!, reconciler)
+      reconciler = new PodReconciler(pod, this.docker, this.eventBus)
+      this.podReconciliers.set(pod.metadata!.name!, reconciler)
     } else {
-      reconciler.updateResource(resource)
+      reconciler.updateResource(pod)
     }
+    childLogger.info(`Reconciling pod ${pod.metadata!.name!}`)
     await reconciler.reconcile()
-  }
-
-  private async handleDockerEvent(ev: any) {
-    const labels = ev.Actor?.Attributes || {}
-    const resourceName = labels['cube.resourceName']
-    if (resourceName) {
-      // this.eventBus.emitEvent({ resourceName, type: `docker.${ev.Action}`, details: JSON.stringify(ev) })
-      const reconciler = this.reconcilers.get(resourceName)
-      if (reconciler) {
-        setTimeout(() => reconciler.reconcile(), 10)
-      }
-    }
   }
 }

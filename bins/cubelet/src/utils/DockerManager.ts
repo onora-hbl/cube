@@ -3,13 +3,9 @@ import Docker from 'dockerode'
 const docker = new Docker({ socketPath: '/var/run/docker.sock' })
 
 export class DockerManager {
-  async findContainerForResource(resourceName: string) {
+  async findContainersInfosForResource(resourceName: string) {
     const filters = { label: [`cube.resourceName=${resourceName}`] }
-    const list = await docker.listContainers({ all: true, filters })
-    if (list.length === 0) return null
-    // take the first (should usually be one container per resource for now)
-    const info = list[0]
-    return docker.getContainer(info.Id)
+    return await docker.listContainers({ all: true, filters })
   }
 
   async inspectContainer(container: Docker.Container) {
@@ -36,6 +32,10 @@ export class DockerManager {
         )
       })
     })
+  }
+
+  async getContainer(id: string) {
+    return docker.getContainer(id)
   }
 
   async createAndStartContainer(resourceName: string, spec: ContainerSpec) {
