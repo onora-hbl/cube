@@ -1,7 +1,8 @@
 import { JSONSchemaType } from 'ajv'
-import { _ContainerSpecSchema, ContainerSpec } from './container'
+import { _ContainerSpecSchema, ContainerSpec, ContainerState } from './container'
+import { ResourceMetadataDefinition, ResourceStatus } from './common'
 
-export const PodType = 'pod' as const
+export type PodType = 'pod'
 
 export type PodSpec = {
   containers: {
@@ -30,7 +31,7 @@ export const _PodSpecSchema: JSONSchemaType<PodSpec> = {
 
 export const PodSpecSchema = _PodSpecSchema as any
 
-export enum PodStatus {
+export enum PodState {
   SCHEDULING = 'scheduling',
   STARTING = 'starting',
   RUNNING = 'running',
@@ -38,9 +39,25 @@ export enum PodStatus {
   FAILED = 'failed',
 }
 
-export const PodResource = {
-  type: PodType,
-  specType: {} as PodSpec,
-  specSchema: PodSpecSchema,
-  status: PodStatus,
+export enum PodEventType {
+  REGISTERED = 'registered',
+  SCHEDULED = 'scheduled',
+  UNSCHEDULED = 'unscheduled',
+  CREATED = 'created',
+  RUNNING = 'running',
+  PULLING_ERROR = 'pulling_error',
+  CRASHED = 'crashed',
+  CRASH_LOOP = 'crash_loop',
+  DELETED = 'deleted',
+}
+
+export type PodStatus = ResourceStatus<PodState> & {
+  containerStatuses: Record<string, ResourceStatus<ContainerState>>
+}
+
+export type PodResourceDefinition = {
+  type: PodType
+  metadata: ResourceMetadataDefinition
+  spec: PodSpec
+  status: PodStatus
 }

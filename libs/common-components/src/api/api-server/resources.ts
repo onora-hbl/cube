@@ -1,13 +1,16 @@
 import {
-  allResourceTypes,
+  allResources,
   ResourceDefinition,
+  ResourceMetadataDefinition,
   ResourceSchema,
   ResourceType,
 } from '../../manifest/common'
 import { defineEndpoint } from '../common'
 
 interface ApiServerApplyRequest {
-  resource: ResourceDefinition
+  resource: Omit<ResourceDefinition, 'metadata' | 'status'> & {
+    metadata?: Partial<ResourceMetadataDefinition>
+  }
 }
 
 const ApiServerApplySchema = {
@@ -37,7 +40,7 @@ export const ApiServerApiApplyEndpoint = defineEndpoint({
   url: '/api/resources/apply',
   requestBody: {} as ApiServerApplyRequest,
   responseBody: {} as ApiServerApplyResponse,
-  errors: ['IMMUTABLE_SPEC', 'RESOURCE_VERSION_CONFLICT'] as const,
+  errors: ['RESOURCE_VERSION_CONFLICT'] as const,
   schema: ApiServerApplySchema,
 })
 
@@ -51,7 +54,7 @@ export const ApiServerApiListEndpoint = defineEndpoint({
   urlParams: {
     type: {
       type: 'string',
-      validator: (value: string) => allResourceTypes.includes(value as ResourceType),
+      validator: (value: string) => allResources.map((r) => r.type).includes(value),
     },
   },
   requestBody: undefined,

@@ -4,22 +4,22 @@ import {
   ApplyAction,
   InferRequest,
   InferResponse,
+  ResourceDefinition,
   ResourceType,
 } from 'common-components'
-import { PodStatus, PodType } from 'common-components/src/manifest/pod'
+import { PodState } from 'common-components/src/manifest/pod'
 import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
-import { Resource } from '../fastifyPlugins/resourcesPlugin'
-import { ContainerStatus } from 'common-components/src/manifest/container'
+import { Pod } from '../fastifyPlugins/resourcesPlugin'
+import { ContainerState } from 'common-components/src/manifest/container'
 
-export const applyHandler = async (
+async function applyPodHandler(
   fastify: FastifyInstance,
-  request: FastifyRequest,
+  body: InferRequest<typeof ApiServerApiApplyEndpoint>,
   reply: FastifyReply,
-) => {
-  const body = request.body as InferRequest<typeof ApiServerApiApplyEndpoint>
+) {
   const uuid = crypto.randomUUID()
   const name = body.resource.metadata?.name ?? `${body.resource.type}-${uuid}`
-  if (fastify.resourceStore.getAll().some((r) => r.metadata.name === name)) {
+  if (fastify.resourceStore.getAllPods().some((r) => r.metadata.name === name)) {
     // TODO: implement update logic
     const res: InferResponse<typeof ApiServerApiApplyEndpoint> = {
       action: ApplyAction.UPDATE,
@@ -28,7 +28,30 @@ export const applyHandler = async (
     }
     return reply.status(200).send(res)
   } else {
-    await fastify.resourceStore.registerNewResource(body.resource, uuid, name)
+    const metadata = {
+      name,
+      labels: {},
+      creationTimestamp: new Date().toISOString(),
+      resourceVersion: 1,
+      generation: 1,
+      ...body.resource.metadata,
+    }
+    const resource: ResourceDefinition = {
+      ...body.resource,
+      metadata,
+      status: {
+        state: PodState.SCHEDULING,
+        containerStatuses: Object.fromEntries(
+          body.resource.spec.containers.map((c) => [
+            c.spec.name,
+            {
+              state: ContainerState.NOT_CREATED,
+            },
+          ]),
+        ),
+      },
+    }
+    await fastify.resourceStore.registerNewPod(resource, uuid)
     const res: InferResponse<typeof ApiServerApiApplyEndpoint> = {
       action: ApplyAction.CREATE,
       resourceType: body.resource.type,
@@ -38,33 +61,36 @@ export const applyHandler = async (
   }
 }
 
-function getContainerOverview(
+export const applyHandler = async (
   fastify: FastifyInstance,
-  resource: Resource,
-): Record<string, string> {
-  const scheduledNode =
-    resource.nodeUuid != null ? fastify.nodeStore.getByUuid(resource.nodeUuid) : null
-  return {
-    name: resource.metadata.name,
-    status: resource.status as unknown as ContainerStatus,
-    reason: resource.reason ?? '',
-    message: resource.message ?? '',
-    node: scheduledNode ? scheduledNode.name : '',
-    creation_time: resource.metadata.creationTime.toISOString(),
+  request: FastifyRequest,
+  reply: FastifyReply,
+) => {
+  const body = request.body as InferRequest<typeof ApiServerApiApplyEndpoint>
+  if (body.resource.type === 'pod') {
+    return applyPodHandler(fastify, body, reply)
   }
 }
 
-function getPodOverview(fastify: FastifyInstance, resource: Resource): Record<string, string> {
-  const scheduledNode =
-    resource.nodeUuid != null ? fastify.nodeStore.getByUuid(resource.nodeUuid) : null
+function getPodOverview(fastify: FastifyInstance, pod: Pod): Record<string, string> {
+  const scheduledNode = pod.nodeUuid != null ? fastify.nodeStore.getByUuid(pod.nodeUuid) : null
   return {
-    name: resource.metadata.name,
-    status: resource.status as unknown as PodStatus,
-    reason: resource.reason ?? '',
-    message: resource.message ?? '',
+    name: pod.metadata.name,
+    status: pod.status.state,
+    reason: pod.status.reason ?? '',
+    message: pod.status.message ?? '',
     node: scheduledNode ? scheduledNode.name : '',
-    creation_time: resource.metadata.creationTime.toISOString(),
+    creation_time: pod.metadata.creationTime.toISOString(),
   }
+}
+
+function listPodsHandler(fastify: FastifyInstance, request: FastifyRequest, reply: FastifyReply) {
+  const pods = fastify.resourceStore.getAllPods()
+  const podsOverview = pods.map((pod) => getPodOverview(fastify, pod))
+  const res: InferResponse<typeof ApiServerApiListEndpoint> = {
+    resourcesOverview: podsOverview,
+  }
+  return reply.status(200).send(res)
 }
 
 export const listHandler = async (
@@ -74,16 +100,7 @@ export const listHandler = async (
 ) => {
   const urlParams = ApiServerApiListEndpoint.getUrlParams(request.params)
   const resourceType = urlParams.type as ResourceType
-  const overviewFunction =
-    resourceType === PodType
-      ? getPodOverview
-      : resourceType === 'container'
-        ? getContainerOverview
-        : () => ({})
-  const resources = fastify.resourceStore.getAll().filter((r) => r.resourceType === resourceType)
-  const resourcesOverview = resources.map((r) => overviewFunction(fastify, r))
-  const res: InferResponse<typeof ApiServerApiListEndpoint> = {
-    resourcesOverview,
+  if (resourceType === 'pod') {
+    return listPodsHandler(fastify, request, reply)
   }
-  return reply.status(200).send(res)
 }

@@ -1,15 +1,31 @@
-import { ContainerResource } from './container'
-import { PodResource } from './pod'
+import { PodResourceDefinition, PodSpecSchema } from './pod'
 
-type ResourceMetadataDefinition = Partial<{
+export type ResourceStatus<S extends string> = {
+  state: S
+  reason?: string
+  message?: string
+}
+
+export type ResourceMetadataDefinition = {
   name: string
   labels: Record<string, string>
   resourceVersion: number
   generation: number
   creationTimestamp: string
-}>
+}
 
-const BaseMetadataSchema = {
+export type ResourceDefinition = PodResourceDefinition
+
+export type ResourceType = ResourceDefinition['type']
+
+export const allResources = [
+  {
+    type: 'pod',
+    specSchema: PodSpecSchema,
+  },
+]
+
+const MetadataSchema = {
   type: 'object',
   properties: {
     name: { type: 'string' },
@@ -25,30 +41,11 @@ const BaseMetadataSchema = {
   additionalProperties: false,
 }
 
-export const allResources = [ContainerResource, PodResource] as const
-
-export type ResourceDefinition =
-  | {
-      type: typeof ContainerResource.type
-      metadata?: ResourceMetadataDefinition
-      spec: typeof ContainerResource.specType
-      status: typeof ContainerResource.status
-    }
-  | {
-      type: typeof PodResource.type
-      metadata?: ResourceMetadataDefinition
-      spec: typeof PodResource.specType
-      status: typeof PodResource.status
-    }
-
-export const allResourceTypes = allResources.map((r) => r.type)
-export type ResourceType = ResourceDefinition['type']
-
 export const ResourceSchema = {
   oneOf: allResources.map((r) => ({
     type: 'object',
     properties: {
-      metadata: BaseMetadataSchema,
+      metadata: MetadataSchema,
       type: { const: r.type },
       spec: r.specSchema,
     },

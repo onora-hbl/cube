@@ -1,12 +1,12 @@
-import { ResourceDefinition } from '../manifest/common'
+import { PodResourceDefinition } from '../manifest/pod'
 import { defineMessage } from './common'
 
-type UpdateResourceContent = {
-  resource: ResourceDefinition
+type UpdatePodContent = {
+  definition: PodResourceDefinition
 }
 
-export const EventBusUpdateResourceNotification = defineMessage({
+export const EventBusUpdatePodNotification = defineMessage({
   type: 'NOTIFICATION',
-  message: 'resource',
-  content: {} as UpdateResourceContent,
+  message: 'pod.update',
+  content: {} as UpdatePodContent,
 })

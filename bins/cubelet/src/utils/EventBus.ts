@@ -82,6 +82,11 @@ export class EventBus {
     this.emitter.emit('resource', resource)
   }
 
+  public addEventToResource(
+    resourceName: string,
+    event: { type: string; reason?: string; message?: string },
+  ) {}
+
   public on(event: 'resource' | 'initialized', listener: (data?: any) => void) {
     this.emitter.on(event, listener)
   }

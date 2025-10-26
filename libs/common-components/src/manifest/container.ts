@@ -1,7 +1,5 @@
 import { JSONSchemaType } from 'ajv'
 
-export const ContainerType = 'container' as const
-
 export type ContainerSpec = {
   name: string
   image: string
@@ -26,8 +24,8 @@ export const _ContainerSpecSchema: JSONSchemaType<ContainerSpec> = {
 
 export const ContainerSpecSchema = _ContainerSpecSchema as any
 
-export enum ContainerStatus {
-  SCHEDULING = 'scheduling',
+export enum ContainerState {
+  NOT_CREATED = 'not_created',
   PULLING = 'pulling',
   PULLING_ERROR = 'pulling_error',
   PULLING_ERROR_LOOP = 'pulling_error_loop',
@@ -38,11 +36,4 @@ export enum ContainerStatus {
   FAILED = 'failed',
   SUCCEEDED = 'succeeded',
   DELETING = 'deleting',
-}
-
-export const ContainerResource = {
-  type: ContainerType,
-  specType: {} as ContainerSpec,
-  specSchema: ContainerSpecSchema,
-  status: ContainerStatus,
 }

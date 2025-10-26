@@ -6,12 +6,7 @@ import {
   InferErrorCode,
   BaseErrorCode,
 } from './api/common'
-import {
-  ResourceDefinition,
-  ResourceSchema,
-  ResourceType,
-  allResourceTypes as ResourcesTypes,
-} from './manifest/common'
+import { ResourceDefinition, ResourceSchema, ResourceType } from './manifest/common'
 import { ApiServerApiHealthEndpoint, CubeApiServerStatus } from './api/api-server/health'
 import {
   ApiServerApiRegisterNodeEndpoint,
@@ -43,7 +38,6 @@ export {
   ResourceDefinition,
   ResourceSchema,
   ResourceType,
-  ResourcesTypes,
   ApiServerApiHealthEndpoint,
   CubeApiServerStatus,
   ApiServerApiRegisterNodeEndpoint,

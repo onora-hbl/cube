@@ -1,26 +1,24 @@
 import { FastifyInstance, FastifyPluginAsync } from 'fastify'
 import { EventEmitter } from 'stream'
 import fp from 'fastify-plugin'
-import { ResourceDefinition, ResourceType } from 'common-components'
 import logger from '../logger'
-import { PodStatus } from 'common-components/src/manifest/pod'
-import { ContainerStatus } from 'common-components/src/manifest/container'
+import { PodEventType, PodSpec, PodStatus } from 'common-components/src/manifest/pod'
+import { PodResourceDefinition } from 'common-components/dist/manifest/pod'
 
 const childLogger = logger.child({ plugin: 'resources' })
 
-type ResourceEvent = {
+type PodEvent = {
   uuid: string
-  resourceUuid: string
-  type: string
+  type: PodEventType
   reason?: string
   message?: string
   timestamp: Date
 }
 
-type ResourceEventRecord = {
+type PodEventRecord = {
   uuid: string
-  resourceUuid: string
-  eventType: string
+  pod_uuid: string
+  event_type: string
   reason?: string
   message?: string
   timestamp: string
@@ -34,257 +32,158 @@ type ResourceMetadata = {
   creationTime: Date
 }
 
-export type Resource = {
+export type Pod = {
   uuid: string
   nodeUuid?: string
-  resourceType: ResourceType
-  spec: ResourceDefinition['spec']
-  status: ResourceDefinition['status']
-  reason?: string
-  message?: string
   metadata: ResourceMetadata
-  events: ResourceEvent[]
+  spec: PodSpec
+  status: PodStatus
+  events: PodEvent[]
 }
 
-type ResourceRecord = {
+type PodRecord = {
   uuid: string
-  nodeUuid?: string
-  resourceType: string
-  name: string
-  labelsJson: string
-  specJson: string
-  resourceVersion: number
-  generation: number
-  creationTimestamp: string
-  status: string
-  reason?: string
-  message?: string
+  node_uuid?: string
+  metadata_json: string
+  spec_json: string
+  status_json: string
 }
 
 class ResourceStore {
   private emitter = new EventEmitter()
   private fastify: FastifyInstance
 
-  private resources: Map<string, Resource> = new Map()
+  private podsByName: Map<string, Pod> = new Map()
 
   constructor(fastify: FastifyInstance) {
     this.fastify = fastify
   }
 
-  public async loadAll() {
-    const eventsRows = this.fastify.db
-      .prepare(
-        `SELECT uuid, resource_uuid as resourceUuid, event_type as eventType, reason, message, timestamp FROM resources_events;`,
-      )
-      .all() as ResourceEventRecord[]
-    childLogger.debug(`Loading ${eventsRows.length} resource events from database`)
-    const eventsByResourceUuid: Map<string, ResourceEvent[]> = new Map()
-    for (const row of eventsRows) {
-      const event: ResourceEvent = {
+  private async loadPods() {
+    const podEventRows = this.fastify.db
+      .prepare(`SELECT uuid, pod_uuid, event_type, reason, message, timestamp FROM pods_events;`)
+      .all() as PodEventRecord[]
+    const podEventsByPodUuid: Map<string, PodEvent[]> = new Map()
+    for (const row of podEventRows) {
+      const event: PodEvent = {
         uuid: row.uuid,
-        resourceUuid: row.resourceUuid,
-        type: row.eventType,
+        type: row.event_type as PodEventType,
         reason: row.reason,
         message: row.message,
         timestamp: new Date(row.timestamp),
       }
-      if (!eventsByResourceUuid.has(row.resourceUuid)) {
-        eventsByResourceUuid.set(row.resourceUuid, [])
+      if (!podEventsByPodUuid.has(row.pod_uuid)) {
+        podEventsByPodUuid.set(row.pod_uuid, [])
       }
-      eventsByResourceUuid.get(row.resourceUuid)!.push(event)
+      podEventsByPodUuid.get(row.pod_uuid)!.push(event)
     }
-    const resourceRows = this.fastify.db
-      .prepare(
-        `SELECT uuid, node_uuid as nodeUuid, resource_type as resourceType, name, labels_json as labelsJson, spec_json as specJson, resource_version as resourceVersion, generation, creation_timestamp as creationTimestamp, status, reason, message FROM resources;`,
-      )
-      .all() as ResourceRecord[]
-    childLogger.debug(`Loading ${resourceRows.length} resources from database`)
-    for (const row of resourceRows) {
-      const events = (eventsByResourceUuid.get(row.uuid) || []).sort(
-        (a, b) => a.timestamp.getTime() - b.timestamp.getTime(),
-      )
-      const resource: Resource = {
+
+    const podRows = this.fastify.db
+      .prepare(`SELECT uuid, node_uuid, metadata_json, spec_json, status_json FROM pods;`)
+      .all() as PodRecord[]
+    childLogger.debug(`Loading ${podRows.length} pods from database`)
+    for (const row of podRows) {
+      const pod: Pod = {
         uuid: row.uuid,
-        nodeUuid: row.nodeUuid || undefined,
-        resourceType: row.resourceType as ResourceType,
-        spec: JSON.parse(row.specJson),
-        status: row.status as unknown as ResourceDefinition['status'],
-        reason: row.reason || undefined,
-        message: row.message || undefined,
-        metadata: {
-          name: row.name,
-          labels: JSON.parse(row.labelsJson),
-          resourceVersion: row.resourceVersion,
-          generation: row.generation,
-          creationTime: new Date(row.creationTimestamp),
-        },
-        events,
+        nodeUuid: row.node_uuid || undefined,
+        metadata: JSON.parse(row.metadata_json),
+        spec: JSON.parse(row.spec_json),
+        status: JSON.parse(row.status_json),
+        events: podEventsByPodUuid.get(row.uuid) || [],
       }
-      this.resources.set(row.name, resource)
+      this.podsByName.set(pod.metadata.name, pod)
     }
   }
 
-  private getSchedulingStatusForResourceType(
-    resourceType: ResourceType,
-  ): ResourceDefinition['status'] {
-    switch (resourceType) {
-      case 'pod':
-        return PodStatus.SCHEDULING as unknown as ResourceDefinition['status']
-      case 'container':
-        return ContainerStatus.SCHEDULING as unknown as ResourceDefinition['status']
-    }
+  public async loadAll() {
+    await Promise.all([this.loadPods()])
   }
 
-  private getScheduledStatusForResourceType(
-    resourceType: ResourceType,
-  ): ResourceDefinition['status'] {
-    switch (resourceType) {
-      case 'pod':
-        return PodStatus.STARTING as unknown as ResourceDefinition['status']
-      case 'container':
-        return ContainerStatus.PULLING as unknown as ResourceDefinition['status']
-    }
-  }
-
-  public async registerNewResource(resource: ResourceDefinition, uuid: string, name: string) {
+  private addEventToPod(pod: Pod, eventType: PodEventType, reason: string, message: string) {
     const now = new Date()
-    const status = this.getSchedulingStatusForResourceType(resource.type)
-    this.fastify.db
-      .prepare(
-        `INSERT INTO resources (uuid, resource_type, name, labels_json, spec_json, resource_version, generation, status, creation_timestamp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);`,
-      )
-      .run(
-        uuid,
-        resource.type,
-        name,
-        JSON.stringify(resource.metadata?.labels || {}),
-        JSON.stringify(resource.spec),
-        1,
-        1,
-        status,
-        now.toISOString(),
-      )
     const eventUuid = crypto.randomUUID()
     this.fastify.db
       .prepare(
-        `INSERT INTO resources_events (uuid, resource_uuid, event_type, reason, message, timestamp) VALUES (?, ?, ?, ?, ?, ?);`,
+        `INSERT INTO pods_events (uuid, pod_uuid, event_type, reason, message, timestamp) VALUES (?, ?, ?, ?, ?, ?);`,
       )
-      .run(
-        eventUuid,
-        uuid,
-        'RESOURCE_CREATED',
-        'Resource created',
-        `Resource of type ${resource.type} named ${name} has been created.`,
-        now.toISOString(),
-      )
-    const newResource: Resource = {
-      uuid,
-      resourceType: resource.type,
-      spec: resource.spec,
-      status,
-      metadata: {
-        name,
-        labels: resource.metadata?.labels || {},
-        resourceVersion: 1,
-        generation: 1,
-        creationTime: now,
-      },
-      events: [
-        {
-          uuid: eventUuid,
-          resourceUuid: uuid,
-          type: 'RESOURCE_CREATED',
-          reason: 'Resource created',
-          message: `Resource of type ${resource.type} named ${name} has been created.`,
-          timestamp: now,
-        },
-      ],
-    }
-    this.resources.set(name, newResource)
-    this.emitter.emit('add', newResource)
-  }
-
-  public addEventToResource(
-    resourceUuid: string,
-    event: Omit<ResourceEvent, 'uuid' | 'timestamp'>,
-  ): ResourceEvent {
-    const resource = this.getAll().find((res) => res.uuid === resourceUuid)
-    if (!resource) {
-      throw new Error(`Resource with uuid ${resourceUuid} not found`)
-    }
-    const eventUuid = crypto.randomUUID()
-    const now = new Date()
-    this.fastify.db
-      .prepare(
-        `INSERT INTO resources_events (uuid, resource_uuid, event_type, reason, message, timestamp) VALUES (?, ?, ?, ?, ?, ?);`,
-      )
-      .run(eventUuid, resourceUuid, event.type, event.reason, event.message, now.toISOString())
-    const newEvent: ResourceEvent = {
+      .run(eventUuid, pod.uuid, eventType, reason, message, now.toISOString())
+    const event: PodEvent = {
       uuid: eventUuid,
-      resourceUuid,
-      type: event.type,
-      reason: event.reason,
-      message: event.message,
+      type: eventType,
+      reason,
+      message,
       timestamp: now,
     }
-    resource.events.push(newEvent)
-    this.emitter.emit('update', resource)
-    return newEvent
+    pod.events.push(event)
   }
 
-  public updateResourceNode(resourceUuid: string, nodeUuid: string | undefined) {
-    const resource = this.getAll().find((res) => res.uuid === resourceUuid)
-    if (!resource) {
-      throw new Error(`Resource with uuid ${resourceUuid} not found`)
-    }
-    const node =
-      nodeUuid != null
-        ? this.fastify.nodeStore.getAll().find((n) => n.uuid === nodeUuid)
-        : undefined
-    if (!node && nodeUuid != null) {
-      throw new Error(`Node with uuid ${nodeUuid} not found`)
-    }
-    const status =
-      nodeUuid != null
-        ? this.getScheduledStatusForResourceType(resource.resourceType)
-        : this.getSchedulingStatusForResourceType(resource.resourceType)
+  public async registerNewPod(pod: PodResourceDefinition, uuid: string) {
     this.fastify.db
-      .prepare(`UPDATE resources SET node_uuid = ?, status = ? WHERE uuid = ?;`)
-      .run(nodeUuid, status, resource.uuid)
-    this.addEventToResource(resource.uuid, {
-      resourceUuid: resource.uuid,
-      type: nodeUuid != null ? 'RESOURCE_SCHEDULED' : 'RESOURCE_UNSCHEDULED',
-      reason: nodeUuid != null ? 'Resource scheduled' : 'Resource unscheduled',
-      message:
-        nodeUuid != null
-          ? `Resource ${resource.metadata.name} has been scheduled to node ${node?.name}.`
-          : `Resource ${resource.metadata.name} has been unscheduled from its node.`,
-    })
-    resource.status = status
-    resource.nodeUuid = nodeUuid
-    this.emitter.emit('update', resource)
-  }
-
-  public getAll(): Resource[] {
-    return Array.from(this.resources.values())
-  }
-
-  public createDefinitionFromResource(resource: Resource): ResourceDefinition {
-    return {
-      type: resource.resourceType,
-      spec: resource.spec,
+      .prepare(
+        `INSERT INTO pods (uuid, metadata_json, spec_json, status_json) VALUES (?, ?, ?, ?);`,
+      )
+      .run(uuid, JSON.stringify(pod.metadata), JSON.stringify(pod.spec), JSON.stringify(pod.status))
+    const newPod: Pod = {
+      uuid,
       metadata: {
-        name: resource.metadata.name,
-        labels: resource.metadata.labels,
-        resourceVersion: resource.metadata.resourceVersion,
-        generation: resource.metadata.generation,
-        creationTimestamp: resource.metadata.creationTime.toISOString(),
+        name: pod.metadata.name,
+        labels: pod.metadata.labels,
+        resourceVersion: pod.metadata.resourceVersion,
+        generation: pod.metadata.generation,
+        creationTime: new Date(pod.metadata.creationTimestamp),
       },
-      status: resource.status,
-    } as ResourceDefinition
+      spec: pod.spec,
+      status: pod.status,
+      events: [],
+    }
+    this.addEventToPod(
+      newPod,
+      PodEventType.CREATED,
+      'Pod created',
+      `Pod ${pod.metadata.name} has been created.`,
+    )
+    this.podsByName.set(newPod.metadata.name, newPod)
+    this.emitter.emit('pod.update', newPod)
   }
 
-  public on(event: 'add' | 'update', listener: (resource: Resource) => void) {
+  public updatePodNode(uuid: string, nodeUuid: string | undefined) {
+    const pod = this.getPodByUuid(uuid)
+    if (!pod) {
+      throw new Error(`Pod with UUID ${uuid} not found`)
+    }
+    this.fastify.db
+      .prepare(`UPDATE pods SET node_uuid = ? WHERE uuid = ?;`)
+      .run(nodeUuid || null, uuid)
+    if (nodeUuid != null) {
+      this.addEventToPod(
+        pod,
+        PodEventType.SCHEDULED,
+        'Pod rescheduled',
+        `Pod ${pod.metadata.name} has been rescheduled to node ${nodeUuid}.`,
+      )
+    } else {
+      this.addEventToPod(
+        pod,
+        PodEventType.UNSCHEDULED,
+        'Pod unscheduled',
+        `Pod ${pod.metadata.name} has been unscheduled.`,
+      )
+    }
+    pod.nodeUuid = nodeUuid
+    this.emitter.emit('pod.update', pod)
+  }
+
+  public getAllPods(): Pod[] {
+    return Array.from(this.podsByName.values())
+  }
+  public getPodByName(name: string): Pod | undefined {
+    return this.podsByName.get(name)
+  }
+  public getPodByUuid(uuid: string): Pod | undefined {
+    return Array.from(this.podsByName.values()).find((pod) => pod.uuid === uuid)
+  }
+
+  public on(event: 'pod.update', listener: (pod: Pod) => void) {
     this.emitter.on(event, listener)
   }
 

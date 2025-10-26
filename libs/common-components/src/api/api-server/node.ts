@@ -21,7 +21,7 @@ const ApiServerRegisterNodeSchema = {
 
 export const ApiServerApiRegisterNodeEndpoint = defineEndpoint({
   method: 'POST',
-  url: '/api/node',
+  url: '/api/nodes',
   requestBody: {} as ApiServerRegisterNodeRequest,
   responseBody: undefined,
   errors: ['NODE_ALREADY_REGISTERED'] as const,
@@ -49,7 +49,7 @@ const ApiServerHearthbeatSchema = {
 
 export const ApiServerApiHeartbeatEndpoint = defineEndpoint({
   method: 'POST',
-  url: '/api/node/heartbeat',
+  url: '/api/nodes/heartbeat',
   requestBody: {} as ApiServerHearthbeatRequest,
   responseBody: undefined,
   errors: ['NODE_NOT_REGISTERED'] as const,

@@ -1,18 +1,29 @@
 import {
   EventBusErrorNotification,
-  EventBusInitializedNotification,
   EventBusSubscribeRequest,
-  EventBusUpdateResourceNotification,
   InferMessageContent,
   InferMessageResponse,
-  ResourceDefinition,
 } from 'common-components'
 import { NodeStatus } from 'common-components/dist/api/api-server/node'
 import { FastifyInstance, FastifyPluginAsync } from 'fastify'
 import fp from 'fastify-plugin'
 import { Socket, Server as SocketIOServer } from 'socket.io'
 import logger from '../logger'
-import { Resource } from './resourcesPlugin'
+import { Pod } from './resourcesPlugin'
+import { EventBusUpdatePodNotification } from 'common-components/dist/socket/resource'
+import { PodResourceDefinition } from 'common-components/src/manifest/pod'
+
+function createPodDefinitionFromResource(pod: Pod): PodResourceDefinition {
+  return {
+    type: 'pod',
+    metadata: {
+      ...pod.metadata,
+      creationTimestamp: pod.metadata.creationTime.toISOString(),
+    },
+    spec: pod.spec,
+    status: pod.status,
+  }
+}
 
 class NodesEventBus {
   private fastify: FastifyInstance
@@ -33,53 +44,46 @@ class NodesEventBus {
       }
     })
 
-    this.fastify.resourceStore.on('add', (resource) => {
-      if (resource.nodeUuid != null) {
-        this.sendResourceToNode(resource)
-      }
-    })
-    this.fastify.resourceStore.on('update', (resource) => {
-      if (resource.nodeUuid != null) {
-        this.sendResourceToNode(resource)
+    this.fastify.resourceStore.on('pod.update', (pod) => {
+      if (pod.nodeUuid != null) {
+        this.sendPodToNode(pod)
       }
     })
   }
 
-  private sendResourceToNode(resource: Resource) {
-    const node = this.fastify.nodeStore.getByUuid(resource.nodeUuid!)
+  private sendPodToNode(pod: Pod) {
+    const node = this.fastify.nodeStore.getByUuid(pod.nodeUuid!)
     if (node == null) {
-      logger.warn(
-        `Tried to send resource ${resource.resourceType}/${resource.metadata.name} to node with uuid ${resource.nodeUuid}, but no such node exists`,
+      logger.error(
+        `Tried to send resource pod/${pod.metadata.name} to node with uuid ${pod.nodeUuid}, but node was not found`,
       )
       return
     }
     const socket = this.nodeSockets.get(node.name)
     if (socket == null) {
-      logger.warn(
-        `Tried to send resource ${resource.resourceType}/${resource.metadata.name} to node ${node.name}, but it is not connected to the EventBus`,
+      logger.error(
+        `Tried to send resource pod/${pod.metadata.name} to node ${node.name}, but node is not connected to EventBus`,
       )
       return
     }
-    const message: InferMessageContent<typeof EventBusUpdateResourceNotification> = {
-      resource: this.fastify.resourceStore.createDefinitionFromResource(resource),
+    const message: InferMessageContent<typeof EventBusUpdatePodNotification> = {
+      definition: createPodDefinitionFromResource(pod),
     }
-    socket.emit(EventBusUpdateResourceNotification.message, message)
+    socket.emit(EventBusUpdatePodNotification.message, message)
   }
 
   public registerNodeSocket(nodeName: string, socket: Socket) {
     logger.info(`Node ${nodeName} connected to EventBus`)
     this.nodeSockets.set(nodeName, socket)
-    const resources: ResourceDefinition[] = []
-    for (const resource of this.fastify.resourceStore.getAll()) {
-      const node = this.fastify.nodeStore.getByUuid(resource.nodeUuid!)
+    for (const pod of this.fastify.resourceStore.getAllPods()) {
+      const node = this.fastify.nodeStore.getByUuid(pod.nodeUuid!)
       if (node != null && node.name === nodeName) {
-        resources.push(this.fastify.resourceStore.createDefinitionFromResource(resource))
+        const message: InferMessageContent<typeof EventBusUpdatePodNotification> = {
+          definition: createPodDefinitionFromResource(pod),
+        }
+        socket.emit(EventBusUpdatePodNotification.message, message)
       }
     }
-    const body: InferMessageContent<typeof EventBusInitializedNotification> = {
-      resources,
-    }
-    socket.emit(EventBusInitializedNotification.message, body)
   }
 
   public unregisterNodeSocket(socket: Socket) {
