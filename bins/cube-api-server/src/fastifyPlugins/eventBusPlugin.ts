@@ -16,10 +16,7 @@ import { PodResourceDefinition } from 'common-components/src/manifest/pod'
 function createPodDefinitionFromResource(pod: Pod): PodResourceDefinition {
   return {
     type: 'pod',
-    metadata: {
-      ...pod.metadata,
-      creationTimestamp: pod.metadata.creationTime.toISOString(),
-    },
+    metadata: pod.metadata,
     spec: pod.spec,
     status: pod.status,
   }

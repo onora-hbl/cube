@@ -2,14 +2,12 @@ import { io } from 'socket.io-client'
 import logger from '../logger'
 import {
   EventBusErrorNotification,
-  EventBusInitializedNotification,
   EventBusSubscribeRequest,
-  EventBusUpdateResourceNotification,
   InferMessageContent,
   InferMessageResponse,
-  ResourceDefinition,
 } from 'common-components'
 import { EventEmitter } from 'stream'
+import { EventBusUpdatePodNotification } from 'common-components/dist/socket/resource'
 
 export class EventBus {
   private host: string
@@ -55,18 +53,12 @@ export class EventBus {
       },
     )
     socket.on(
-      EventBusUpdateResourceNotification.message,
-      (body: InferMessageContent<typeof EventBusUpdateResourceNotification>) => {
-        this.receiveResource(body.resource)
-      },
-    )
-    socket.on(
-      EventBusInitializedNotification.message,
-      (body: InferMessageContent<typeof EventBusInitializedNotification>) => {
-        for (const resource of body.resources) {
-          this.receiveResource(resource)
-        }
-        this.emitter.emit('initialized')
+      EventBusUpdatePodNotification.message,
+      (body: InferMessageContent<typeof EventBusUpdatePodNotification>) => {
+        logger.debug(
+          `Received resource update from EventBus: ${body.definition.type}/${body.definition.metadata!.name}`,
+        )
+        this.emitter.emit('pod.update', body.definition)
       },
     )
     socket.on('disconnect', () => {
@@ -75,19 +67,7 @@ export class EventBus {
     socket.connect()
   }
 
-  private receiveResource(resource: ResourceDefinition) {
-    logger.debug(
-      `Received resource update from EventBus: ${resource.type}/${resource.metadata!.name}`,
-    )
-    this.emitter.emit('resource', resource)
-  }
-
-  public addEventToResource(
-    resourceName: string,
-    event: { type: string; reason?: string; message?: string },
-  ) {}
-
-  public on(event: 'resource' | 'initialized', listener: (data?: any) => void) {
+  public on(event: 'pod.update', listener: (data?: any) => void) {
     this.emitter.on(event, listener)
   }
 

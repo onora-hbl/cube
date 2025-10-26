@@ -2,11 +2,9 @@ import { parseArgs, printHelp, printVersion } from './arguments'
 import logger from './logger'
 import { ApiServer } from './utils/ApiServer'
 import { EventBus } from './utils/EventBus'
-import { ResourceStore } from './utils/ResourceStore'
 
 let apiServer: ApiServer | null = null
 let eventBus: EventBus | null = null
-let resourceStore: ResourceStore | null = null
 
 async function main() {
   const args = parseArgs()
@@ -27,7 +25,6 @@ async function main() {
   await apiServer.initialize()
 
   eventBus = new EventBus(args.options.apiServerHost, args.options.apiServerPort, args.options.name)
-  resourceStore = new ResourceStore(eventBus)
   await eventBus.connect()
 
   logger.info(`Cubelet is running`)
@@ -44,9 +41,6 @@ function shutdown() {
   }
   if (eventBus) {
     eventBus[Symbol.dispose]()
-  }
-  if (resourceStore) {
-    resourceStore[Symbol.dispose]()
   }
   logger.info(`Cubelet has shut down`)
 }

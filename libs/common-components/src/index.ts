@@ -21,8 +21,7 @@ import {
   ErrorNotificationCodes,
   EventBusErrorNotification,
 } from './socket/common'
-import { EventBusSubscribeRequest, EventBusInitializedNotification } from './socket/node'
-import { EventBusUpdateResourceNotification } from './socket/resource'
+import { EventBusSubscribeRequest } from './socket/node'
 
 export {
   Option,
@@ -51,6 +50,4 @@ export {
   ErrorNotificationCodes,
   EventBusErrorNotification,
   EventBusSubscribeRequest,
-  EventBusUpdateResourceNotification,
-  EventBusInitializedNotification,
 }

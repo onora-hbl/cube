@@ -4,6 +4,7 @@ import { NodeStatus } from 'common-components/dist/api/api-server/node'
 import { Node } from './nodesPlugin'
 import logger from '../logger'
 import { Pod } from './resourcesPlugin'
+import { PodEventType } from 'common-components/src/manifest/pod'
 
 const childLogger = logger.child({ plugin: 'scheduler' })
 

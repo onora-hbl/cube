@@ -2,8 +2,10 @@ import { FastifyInstance, FastifyPluginAsync } from 'fastify'
 import { EventEmitter } from 'stream'
 import fp from 'fastify-plugin'
 import logger from '../logger'
-import { PodEventType, PodSpec, PodStatus } from 'common-components/src/manifest/pod'
+import { PodEventType, PodSpec, PodState, PodStatus } from 'common-components/src/manifest/pod'
 import { PodResourceDefinition } from 'common-components/dist/manifest/pod'
+import { ResourceMetadataDefinition } from 'common-components/src/manifest/common'
+import { stat } from 'fs'
 
 const childLogger = logger.child({ plugin: 'resources' })
 
@@ -24,18 +26,10 @@ type PodEventRecord = {
   timestamp: string
 }
 
-type ResourceMetadata = {
-  name: string
-  labels: Record<string, string>
-  resourceVersion: number
-  generation: number
-  creationTime: Date
-}
-
 export type Pod = {
   uuid: string
   nodeUuid?: string
-  metadata: ResourceMetadata
+  metadata: ResourceMetadataDefinition
   spec: PodSpec
   status: PodStatus
   events: PodEvent[]
@@ -130,7 +124,7 @@ class ResourceStore {
         labels: pod.metadata.labels,
         resourceVersion: pod.metadata.resourceVersion,
         generation: pod.metadata.generation,
-        creationTime: new Date(pod.metadata.creationTimestamp),
+        creationTimestamp: pod.metadata.creationTimestamp,
       },
       spec: pod.spec,
       status: pod.status,
@@ -151,15 +145,19 @@ class ResourceStore {
     if (!pod) {
       throw new Error(`Pod with UUID ${uuid} not found`)
     }
+    const status = { ...pod.status }
+    status.state = nodeUuid != null ? PodState.CREATING : PodState.SCHEDULING
     this.fastify.db
-      .prepare(`UPDATE pods SET node_uuid = ? WHERE uuid = ?;`)
-      .run(nodeUuid || null, uuid)
+      .prepare(`UPDATE pods SET node_uuid = ?, status_json = ? WHERE uuid = ?;`)
+      .run(nodeUuid || null, JSON.stringify(status), uuid)
     if (nodeUuid != null) {
       this.addEventToPod(
         pod,
         PodEventType.SCHEDULED,
-        'Pod rescheduled',
-        `Pod ${pod.metadata.name} has been rescheduled to node ${nodeUuid}.`,
+        pod.nodeUuid == null ? 'Pod scheduled' : 'Pod rescheduled',
+        pod.nodeUuid == null
+          ? `Pod ${pod.metadata.name} has been scheduled to node ${nodeUuid}.`
+          : `Pod ${pod.metadata.name} has been rescheduled to node ${nodeUuid}.`,
       )
     } else {
       this.addEventToPod(
@@ -169,6 +167,7 @@ class ResourceStore {
         `Pod ${pod.metadata.name} has been unscheduled.`,
       )
     }
+    pod.status = status
     pod.nodeUuid = nodeUuid
     this.emitter.emit('pod.update', pod)
   }

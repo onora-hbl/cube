@@ -80,7 +80,7 @@ function getPodOverview(fastify: FastifyInstance, pod: Pod): Record<string, stri
     reason: pod.status.reason ?? '',
     message: pod.status.message ?? '',
     node: scheduledNode ? scheduledNode.name : '',
-    creation_time: pod.metadata.creationTime.toISOString(),
+    creation_time: pod.metadata.creationTimestamp,
   }
 }
 

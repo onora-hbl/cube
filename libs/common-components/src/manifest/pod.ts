@@ -33,6 +33,7 @@ export const PodSpecSchema = _PodSpecSchema as any
 
 export enum PodState {
   SCHEDULING = 'scheduling',
+  CREATING = 'creating',
   STARTING = 'starting',
   RUNNING = 'running',
   SUCCEEDED = 'succeeded',
