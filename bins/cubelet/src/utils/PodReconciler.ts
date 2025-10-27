@@ -1,7 +1,7 @@
 import { Mutex } from 'async-mutex'
 import logger from '../logger'
 import { EventBus } from './EventBus'
-import { ContainerSpec } from 'common-components/dist/manifest/container'
+import { ContainerEventType, ContainerSpec } from 'common-components/dist/manifest/container'
 import { DockerEvent, DockerManager } from './DockerManager'
 import { PodResourceDefinition } from 'common-components/dist/manifest/pod'
 import Docker from 'dockerode'
@@ -16,7 +16,7 @@ export class PodReconciler {
     private docker: DockerManager,
     private eventBus: EventBus,
   ) {
-    this.docker.onResourceContainerEvent(this.resourceName, this.handleDockerEvent)
+    this.docker.onResourceContainerEvent(this.resourceName, this.handleDockerEvent.bind(this))
   }
 
   get resourceName() {
@@ -32,54 +32,66 @@ export class PodReconciler {
     if (!(await this.docker.imageExists(image))) {
       childLogger.info(`Pulling image ${image} for pod ${this.resource.metadata!.name!}`)
       try {
-        // update container state: pulling_image
-        // create pod event: container X pulling_image
+        this.eventBus.addEventToPodContainer(this.resourceName, spec.name, {
+          type: ContainerEventType.IMAGE_PULL_STARTED,
+          message: `Pulling image ${image} for container ${spec.name}`,
+        })
         await this.docker.pullImage(image)
         childLogger.info(
           `Successfully pulled image ${image} for pod ${this.resource.metadata!.name!}`,
         )
-        // create pod event: container X image_pulled
+        this.eventBus.addEventToPodContainer(this.resourceName, spec.name, {
+          type: ContainerEventType.IMAGE_PULL_SUCCEEDED,
+          message: `Successfully pulled image ${image} for container ${spec.name}`,
+        })
       } catch (err) {
         childLogger.error(
           { err },
           `Failed to pull image ${image} for pod ${this.resource.metadata!.name!}`,
         )
-        // update container state: image_pull_failed
-        // create pod event: container X image_pull_failed
+        this.eventBus.addEventToPodContainer(this.resourceName, spec.name, {
+          type: ContainerEventType.IMAGE_PULL_FAILED,
+          message: `Failed to pull image ${image} for container ${spec.name}: ${err}`,
+        })
         return
       }
     } else {
-      // create pod event: container X image_already_present
+      this.eventBus.addEventToPodContainer(this.resourceName, spec.name, {
+        type: ContainerEventType.IMAGE_ALREADY_PRESENT,
+        message: `Image ${image} already present for container ${spec.name}`,
+      })
     }
-    // update container state: creating
-    // create pod event: container X creating
     try {
       childLogger.info(`Creating container for pod ${this.resource.metadata!.name!}`)
       const container = await this.docker.createContainer(this.resourceName, spec)
       childLogger.info(`Successfully created container for pod ${this.resource.metadata!.name!}`)
+      this.eventBus.addEventToPodContainer(this.resourceName, spec.name, {
+        type: ContainerEventType.CREATED,
+        message: `Successfully created container ${spec.name}`,
+      })
       return container
     } catch (err) {
       childLogger.error(
         { err },
         `Failed to create container for pod ${this.resource.metadata!.name!}`,
       )
-      // update container state: creation_failed
-      // create pod event: container X creation_failed
+      this.eventBus.addEventToPodContainer(this.resourceName, spec.name, {
+        type: ContainerEventType.FAILED,
+        message: `Failed to create container ${spec.name} for pod ${this.resource.metadata!.name!}`,
+      })
       return
     }
-    // update container state: created
-    // create pod event: container X created
   }
 
   async startContainer({ container, spec }: { container: Docker.Container; spec: ContainerSpec }) {
     try {
-      // update container state: starting
-      // create pod event: container X starting
       childLogger.info(`Starting container ${spec.name} for pod ${this.resource.metadata!.name!}`)
       await container.start()
     } catch (err) {
-      // update container state: start_failed
-      // create pod event: container X start_failed
+      this.eventBus.addEventToPodContainer(this.resourceName, spec.name, {
+        type: ContainerEventType.FAILED,
+        message: `Failed to start container ${spec.name} for pod ${this.resource.metadata!.name!}: ${err}`,
+      })
       childLogger.error(
         { err },
         `Failed to start container for pod ${this.resource.metadata!.name!}`,
@@ -97,7 +109,6 @@ export class PodReconciler {
         // pod spec is immutable, error
       }
       childLogger.info(`Creating pod ${this.resource.metadata!.name!}`)
-      // create pod event: pod creating
       const containers = await Promise.all(
         (this.resource.spec!.containers || []).map(async (def) => ({
           spec: def.spec,
@@ -109,7 +120,6 @@ export class PodReconciler {
         return
       }
       childLogger.info(`Starting containers for pod ${this.resource.metadata!.name!}`)
-      // create pod event: pod starting
       await Promise.all(
         containers.map((c) => this.startContainer({ container: c.container!, spec: c.spec })),
       )
@@ -117,9 +127,22 @@ export class PodReconciler {
   }
 
   private async handleDockerEvent(containerName: string, event: DockerEvent) {
-    // if container is running, update container state to running (create pod event: container X running)
-    // if container exited, update container state to succeeded or failed based on exit code (create pod event: container X exited)
-    // if container crashed, update container state to failed (create pod event: container X crashed)
     childLogger.info(`Received docker event for container ${containerName}: ${event.type}`)
+    if (event.type === 'start') {
+      this.eventBus.addEventToPodContainer(this.resource.metadata.name, containerName, {
+        type: ContainerEventType.STARTED,
+        message: `Container ${containerName} has started`,
+      })
+    } else if (event.type === 'succeeded') {
+      this.eventBus.addEventToPodContainer(this.resource.metadata.name, containerName, {
+        type: ContainerEventType.SUCCEEDED,
+        message: `Container ${containerName} has succeeded`,
+      })
+    } else if (event.type === 'failed') {
+      this.eventBus.addEventToPodContainer(this.resource.metadata.name, containerName, {
+        type: ContainerEventType.FAILED,
+        message: `Container ${containerName} has failed`,
+      })
+    }
   }
 }

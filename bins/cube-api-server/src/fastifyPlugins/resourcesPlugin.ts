@@ -5,22 +5,31 @@ import logger from '../logger'
 import { PodEventType, PodSpec, PodState, PodStatus } from 'common-components/src/manifest/pod'
 import { PodResourceDefinition } from 'common-components/dist/manifest/pod'
 import { ResourceMetadataDefinition } from 'common-components/src/manifest/common'
-import { stat } from 'fs'
+import { ContainerEventType } from 'common-components/src/manifest/container'
 
 const childLogger = logger.child({ plugin: 'resources' })
 
-type PodEvent = {
+type PodEventBase = {
   uuid: string
-  type: PodEventType
   reason?: string
   message?: string
   timestamp: Date
 }
 
+type PodEvent =
+  | (PodEventBase & {
+      type: PodEventType
+    })
+  | (PodEventBase & {
+      type: ContainerEventType
+      containerName: string
+    })
+
 type PodEventRecord = {
   uuid: string
   pod_uuid: string
   event_type: string
+  container_name?: string
   reason?: string
   message?: string
   timestamp: string
@@ -55,17 +64,28 @@ class ResourceStore {
 
   private async loadPods() {
     const podEventRows = this.fastify.db
-      .prepare(`SELECT uuid, pod_uuid, event_type, reason, message, timestamp FROM pods_events;`)
+      .prepare(
+        `SELECT uuid, pod_uuid, event_type, reason, message, timestamp, container_name FROM pods_events;`,
+      )
       .all() as PodEventRecord[]
     const podEventsByPodUuid: Map<string, PodEvent[]> = new Map()
     for (const row of podEventRows) {
-      const event: PodEvent = {
-        uuid: row.uuid,
-        type: row.event_type as PodEventType,
-        reason: row.reason,
-        message: row.message,
-        timestamp: new Date(row.timestamp),
-      }
+      const event: PodEvent = row.container_name
+        ? {
+            uuid: row.uuid,
+            type: row.event_type as ContainerEventType,
+            reason: row.reason,
+            message: row.message,
+            timestamp: new Date(row.timestamp),
+            containerName: row.container_name,
+          }
+        : {
+            uuid: row.uuid,
+            type: row.event_type as PodEventType,
+            reason: row.reason,
+            message: row.message,
+            timestamp: new Date(row.timestamp),
+          }
       if (!podEventsByPodUuid.has(row.pod_uuid)) {
         podEventsByPodUuid.set(row.pod_uuid, [])
       }
@@ -104,6 +124,31 @@ class ResourceStore {
     const event: PodEvent = {
       uuid: eventUuid,
       type: eventType,
+      reason,
+      message,
+      timestamp: now,
+    }
+    pod.events.push(event)
+  }
+
+  private addEventToContainerInPod(
+    pod: Pod,
+    containerName: string,
+    eventType: ContainerEventType,
+    reason: string,
+    message: string,
+  ) {
+    const now = new Date()
+    const eventUuid = crypto.randomUUID()
+    this.fastify.db
+      .prepare(
+        `INSERT INTO pods_events (uuid, pod_uuid, event_type, container_name, reason, message, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?);`,
+      )
+      .run(eventUuid, pod.uuid, eventType, containerName, reason, message, now.toISOString())
+    const event: PodEvent = {
+      uuid: eventUuid,
+      type: eventType,
+      containerName,
       reason,
       message,
       timestamp: now,

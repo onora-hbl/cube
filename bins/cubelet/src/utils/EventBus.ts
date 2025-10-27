@@ -7,7 +7,12 @@ import {
   InferMessageResponse,
 } from 'common-components'
 import { EventEmitter } from 'stream'
-import { EventBusUpdatePodNotification } from 'common-components/dist/socket/resource'
+import {
+  EventBusAddEventToPodContainerNotification,
+  EventBusUpdatePodNotification,
+} from 'common-components/dist/socket/resource'
+import { PodEventType } from 'common-components/dist/manifest/pod'
+import { ContainerEventType } from 'common-components/dist/manifest/container'
 
 export class EventBus {
   private host: string
@@ -65,6 +70,23 @@ export class EventBus {
       logger.warn(`Disconnected from EventBus at ${this.url}`)
     })
     socket.connect()
+  }
+
+  public addEventToPodContainer(
+    podName: string,
+    containerName: string,
+    event: { type: ContainerEventType; reason?: string; message?: string },
+  ) {
+    if (!this.socket) {
+      throw new Error('EventBus is not connected')
+    }
+    const body: InferMessageContent<typeof EventBusAddEventToPodContainerNotification> = {
+      podName,
+      containerName,
+      event,
+      timestamp: new Date().toISOString(),
+    }
+    this.socket.emit(EventBusAddEventToPodContainerNotification.message, body)
   }
 
   public on(event: 'pod.update', listener: (data?: any) => void) {

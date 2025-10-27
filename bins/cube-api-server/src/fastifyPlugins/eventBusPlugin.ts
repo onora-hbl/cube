@@ -10,7 +10,10 @@ import fp from 'fastify-plugin'
 import { Socket, Server as SocketIOServer } from 'socket.io'
 import logger from '../logger'
 import { Pod } from './resourcesPlugin'
-import { EventBusUpdatePodNotification } from 'common-components/dist/socket/resource'
+import {
+  EventBusAddEventToPodContainerNotification,
+  EventBusUpdatePodNotification,
+} from 'common-components/dist/socket/resource'
 import { PodResourceDefinition } from 'common-components/src/manifest/pod'
 
 function createPodDefinitionFromResource(pod: Pod): PodResourceDefinition {
@@ -69,9 +72,21 @@ class NodesEventBus {
     socket.emit(EventBusUpdatePodNotification.message, message)
   }
 
+  private handlePodContainerUpdate(
+    body: InferMessageContent<typeof EventBusAddEventToPodContainerNotification>,
+  ) {
+    logger.info(
+      `Received event for pod ${body.podName} container ${body.containerName} from node: ${body.event.type}`,
+    )
+  }
+
   public registerNodeSocket(nodeName: string, socket: Socket) {
     logger.info(`Node ${nodeName} connected to EventBus`)
     this.nodeSockets.set(nodeName, socket)
+    socket.on(
+      EventBusAddEventToPodContainerNotification.message,
+      this.handlePodContainerUpdate.bind(this),
+    )
     for (const pod of this.fastify.resourceStore.getAllPods()) {
       const node = this.fastify.nodeStore.getByUuid(pod.nodeUuid!)
       if (node != null && node.name === nodeName) {

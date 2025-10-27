@@ -30,6 +30,7 @@ export enum ContainerState {
   PULLING_ERROR = 'pulling_error',
   PULLING_ERROR_LOOP = 'pulling_error_loop',
   CREATING = 'creating',
+  CREATED = 'created',
   STARTING = 'starting',
   CRASH = 'crash',
   CRASH_LOOP = 'crash_loop',
@@ -37,4 +38,16 @@ export enum ContainerState {
   FAILED = 'failed',
   SUCCEEDED = 'succeeded',
   DELETING = 'deleting',
+}
+
+export enum ContainerEventType {
+  IMAGE_ALREADY_PRESENT = 'image_already_present',
+  IMAGE_PULL_STARTED = 'image_pull_started',
+  IMAGE_PULL_SUCCEEDED = 'image_pull_succeeded',
+  IMAGE_PULL_FAILED = 'image_pull_failed',
+  CREATED = 'created',
+  STARTED = 'started',
+  SUCCEEDED = 'succeeded',
+  FAILED = 'failed',
+  DELETED = 'deleted',
 }
