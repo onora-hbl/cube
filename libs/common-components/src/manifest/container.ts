@@ -35,7 +35,6 @@ export enum ContainerState {
   CRASH = 'crash',
   CRASH_LOOP = 'crash_loop',
   RUNNING = 'running',
-  FAILED = 'failed',
   SUCCEEDED = 'succeeded',
   DELETING = 'deleting',
 }

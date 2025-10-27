@@ -48,6 +48,9 @@ importers:
 
   bins/cube-api-server:
     dependencies:
+      async-mutex:
+        specifier: ^0.5.0
+        version: 0.5.0
       better-sqlite3:
         specifier: ^12.4.1
         version: 12.4.1

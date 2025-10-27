@@ -4,8 +4,10 @@ import fp from 'fastify-plugin'
 import logger from '../logger'
 import { PodEventType, PodSpec, PodState, PodStatus } from 'common-components/src/manifest/pod'
 import { PodResourceDefinition } from 'common-components/dist/manifest/pod'
-import { ResourceMetadataDefinition } from 'common-components/src/manifest/common'
+import { ResourceMetadataDefinition, ResourceStatus } from 'common-components/src/manifest/common'
 import { ContainerEventType } from 'common-components/src/manifest/container'
+import { ContainerState } from 'common-components/dist/manifest/container'
+import { Mutex } from 'async-mutex'
 
 const childLogger = logger.child({ plugin: 'resources' })
 
@@ -113,20 +115,29 @@ class ResourceStore {
     await Promise.all([this.loadPods()])
   }
 
-  private addEventToPod(pod: Pod, eventType: PodEventType, reason: string, message: string) {
-    const now = new Date()
+  private addEventToPod(pod: Pod, eventType: PodEventType, message?: string, reason?: string) {
+    this.addEventToPodAtDate(pod, eventType, new Date(), message, reason)
+  }
+
+  private addEventToPodAtDate(
+    pod: Pod,
+    eventType: PodEventType,
+    date: Date,
+    message?: string,
+    reason?: string,
+  ) {
     const eventUuid = crypto.randomUUID()
     this.fastify.db
       .prepare(
         `INSERT INTO pods_events (uuid, pod_uuid, event_type, reason, message, timestamp) VALUES (?, ?, ?, ?, ?, ?);`,
       )
-      .run(eventUuid, pod.uuid, eventType, reason, message, now.toISOString())
+      .run(eventUuid, pod.uuid, eventType, reason || null, message || null, date.toISOString())
     const event: PodEvent = {
       uuid: eventUuid,
       type: eventType,
       reason,
       message,
-      timestamp: now,
+      timestamp: date,
     }
     pod.events.push(event)
   }
@@ -135,25 +146,155 @@ class ResourceStore {
     pod: Pod,
     containerName: string,
     eventType: ContainerEventType,
-    reason: string,
-    message: string,
+    message?: string,
+    reason?: string,
   ) {
-    const now = new Date()
+    this.addEventToContainerInPodAtDate(pod, containerName, eventType, new Date(), message, reason)
+  }
+
+  public addEventToContainerInPodAtDate(
+    pod: Pod,
+    containerName: string,
+    eventType: ContainerEventType,
+    date: Date,
+    message?: string,
+    reason?: string,
+  ) {
     const eventUuid = crypto.randomUUID()
     this.fastify.db
       .prepare(
         `INSERT INTO pods_events (uuid, pod_uuid, event_type, container_name, reason, message, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?);`,
       )
-      .run(eventUuid, pod.uuid, eventType, containerName, reason, message, now.toISOString())
+      .run(
+        eventUuid,
+        pod.uuid,
+        eventType,
+        containerName,
+        reason || null,
+        message || null,
+        date.toISOString(),
+      )
     const event: PodEvent = {
       uuid: eventUuid,
       type: eventType,
       containerName,
       reason,
       message,
-      timestamp: now,
+      timestamp: date,
     }
     pod.events.push(event)
+  }
+
+  private updateStatusMutex = new Mutex()
+
+  public async updatePodContainerStatusBasedOnEvent(
+    podName: string,
+    containerName: string,
+    event: ContainerEventType,
+    date: Date,
+  ) {
+    await this.updateStatusMutex.runExclusive(async () => {
+      const pod = this.getPodByName(podName)
+      if (pod == null) {
+        throw new Error(`Pod with name ${podName} not found`)
+      }
+      let containerStatuses = { ...pod.status.containerStatuses }
+      switch (event) {
+        case ContainerEventType.IMAGE_PULL_STARTED:
+          containerStatuses[containerName] = { state: ContainerState.PULLING }
+          break
+        case ContainerEventType.IMAGE_ALREADY_PRESENT:
+        case ContainerEventType.IMAGE_PULL_SUCCEEDED:
+          containerStatuses[containerName] = { state: ContainerState.CREATING }
+          break
+        case ContainerEventType.IMAGE_PULL_FAILED:
+          containerStatuses[containerName] = { state: ContainerState.PULLING_ERROR }
+          break
+        case ContainerEventType.CREATED:
+          containerStatuses[containerName] = { state: ContainerState.CREATED }
+          break
+        case ContainerEventType.STARTED:
+          containerStatuses[containerName] = { state: ContainerState.RUNNING }
+          break
+        case ContainerEventType.SUCCEEDED:
+          containerStatuses[containerName] = { state: ContainerState.SUCCEEDED }
+          break
+        case ContainerEventType.FAILED:
+          containerStatuses[containerName] = { state: ContainerState.CRASH }
+          break
+        case ContainerEventType.DELETED:
+          containerStatuses[containerName] = { state: ContainerState.DELETING }
+          break
+      }
+
+      const allContainersCreated = Object.values(containerStatuses).every(
+        (status) => status.state === ContainerState.CREATED,
+      )
+      if (allContainersCreated && pod.status.state === PodState.CREATING) {
+        containerStatuses = Object.fromEntries(
+          Object.entries(containerStatuses).map(([name, status]) => [
+            name,
+            { state: ContainerState.STARTING },
+          ]),
+        )
+        this.addEventToPodAtDate(
+          pod,
+          PodEventType.CREATED,
+          date,
+          `All containers in pod are created`,
+        )
+        pod.status.state = PodState.STARTING
+      }
+
+      const allContainersRunning = Object.values(containerStatuses).every(
+        (status) => status.state === ContainerState.RUNNING,
+      )
+      if (allContainersRunning && pod.status.state === PodState.STARTING) {
+        this.addEventToPodAtDate(
+          pod,
+          PodEventType.RUNNING,
+          date,
+          `All containers in pod are running`,
+        )
+        pod.status.state = PodState.RUNNING
+      }
+
+      const allContainersSucceeded = Object.values(containerStatuses).every(
+        (status) => status.state === ContainerState.SUCCEEDED,
+      )
+      if (allContainersSucceeded && pod.status.state === PodState.RUNNING) {
+        this.addEventToPodAtDate(
+          pod,
+          PodEventType.DELETED,
+          date,
+          `All containers in pod have succeeded`,
+        )
+        pod.status.state = PodState.SUCCEEDED
+      }
+
+      const hasAnyContainerCrashed = Object.values(containerStatuses).some(
+        (status) =>
+          status.state === ContainerState.CRASH || status.state === ContainerState.CRASH_LOOP,
+      )
+      if (hasAnyContainerCrashed && pod.status.state === PodState.RUNNING) {
+        this.addEventToPodAtDate(
+          pod,
+          PodEventType.CRASHED,
+          date,
+          `One or more containers in pod have crashed`,
+        )
+        pod.status.state = PodState.FAILED
+      }
+
+      const newStatus: PodStatus = {
+        ...pod.status,
+        containerStatuses,
+      }
+      this.fastify.db
+        .prepare(`UPDATE pods SET status_json = ? WHERE uuid = ?;`)
+        .run(JSON.stringify(newStatus), pod.uuid)
+      pod.status = newStatus
+    })
   }
 
   public async registerNewPod(pod: PodResourceDefinition, uuid: string) {
@@ -177,9 +318,9 @@ class ResourceStore {
     }
     this.addEventToPod(
       newPod,
-      PodEventType.CREATED,
-      'Pod created',
-      `Pod ${pod.metadata.name} has been created.`,
+      PodEventType.REGISTERED,
+      'Pod registered',
+      `Pod ${pod.metadata.name} has been registered.`,
     )
     this.podsByName.set(newPod.metadata.name, newPod)
     this.emitter.emit('pod.update', newPod)

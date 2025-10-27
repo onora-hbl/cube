@@ -72,11 +72,39 @@ class NodesEventBus {
     socket.emit(EventBusUpdatePodNotification.message, message)
   }
 
-  private handlePodContainerUpdate(
+  private async handlePodContainerUpdate(
     body: InferMessageContent<typeof EventBusAddEventToPodContainerNotification>,
   ) {
     logger.info(
-      `Received event for pod ${body.podName} container ${body.containerName} from node: ${body.event.type}`,
+      `Received event for container ${body.containerName} of pod ${body.podName}: ${body.event.type}`,
+    )
+    const pod = this.fastify.resourceStore.getPodByName(body.podName)
+    if (pod == null) {
+      logger.error(
+        `Tried to add event to container ${body.containerName} of pod ${body.podName}, but pod was not found`,
+      )
+      return
+    }
+    const container = pod.spec.containers.find((c) => c.spec.name === body.containerName)
+    if (container == null) {
+      logger.error(
+        `Tried to add event to container ${body.containerName} of pod ${body.podName}, but container was not found`,
+      )
+      return
+    }
+    this.fastify.resourceStore.addEventToContainerInPodAtDate(
+      pod,
+      body.containerName,
+      body.event.type,
+      new Date(body.timestamp),
+      body.event.message,
+      body.event.reason,
+    )
+    await this.fastify.resourceStore.updatePodContainerStatusBasedOnEvent(
+      pod.metadata.name,
+      body.containerName,
+      body.event.type,
+      new Date(body.timestamp),
     )
   }
 
