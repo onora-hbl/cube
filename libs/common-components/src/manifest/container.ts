@@ -29,6 +29,7 @@ export enum ContainerState {
   PULLING = 'pulling',
   PULLING_ERROR = 'pulling_error',
   PULLING_ERROR_LOOP = 'pulling_error_loop',
+  CREATING = 'creating',
   STARTING = 'starting',
   CRASH = 'crash',
   CRASH_LOOP = 'crash_loop',
