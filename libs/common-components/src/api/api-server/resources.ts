@@ -61,3 +61,23 @@ export const ApiServerApiListEndpoint = defineEndpoint({
   responseBody: {} as ApiServerListResponse,
   errors: [] as const,
 })
+
+interface ApiServerGetResponse {
+  resource: ResourceDefinition
+  eventsOverview: Record<string, string>[]
+}
+
+export const ApiServerApiGetEndpoint = defineEndpoint({
+  method: 'GET',
+  url: '/api/resources/:type/:name',
+  urlParams: {
+    type: {
+      type: 'string',
+      validator: (value: string) => allResources.map((r) => r.type).includes(value),
+    },
+    name: { type: 'string' },
+  },
+  requestBody: undefined,
+  responseBody: {} as ApiServerGetResponse,
+  errors: ['RESOURCE_NOT_FOUND'] as const,
+})

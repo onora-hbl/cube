@@ -16,11 +16,12 @@ import Fastify from 'fastify'
 import databasePlugin from './fastifyPlugins/databasePlugin'
 import { hearthbeatHandler, listNodes, registerNodeHandler } from './endpoints/node'
 import nodesPlugin from './fastifyPlugins/nodesPlugin'
-import { applyHandler, listHandler } from './endpoints/resource'
+import { applyHandler, getHandler, listHandler } from './endpoints/resource'
 import resourcesPlugin from './fastifyPlugins/resourcesPlugin'
 import eventBusPlugin from './fastifyPlugins/eventBusPlugin'
 import fastifySocketIO from 'fastify-socket.io'
 import schedulerPlugin, { SchedulerType } from './fastifyPlugins/schedulerPlugin'
+import { ApiServerApiGetEndpoint } from 'common-components/dist/api/api-server/resources'
 
 let isAppReady = false
 
@@ -127,6 +128,15 @@ async function main() {
     schema: ApiServerApiListEndpoint.schema,
     handler: async (request, reply) => {
       await listHandler(app, request, reply)
+    },
+  })
+
+  app.route({
+    method: ApiServerApiGetEndpoint.method,
+    url: ApiServerApiGetEndpoint.url,
+    schema: ApiServerApiGetEndpoint.schema,
+    handler: async (request, reply) => {
+      await getHandler(app, request, reply)
     },
   })
 

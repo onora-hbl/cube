@@ -21,6 +21,7 @@ type PodEventBase = {
 type PodEvent =
   | (PodEventBase & {
       type: PodEventType
+      containerName?: undefined
     })
   | (PodEventBase & {
       type: ContainerEventType

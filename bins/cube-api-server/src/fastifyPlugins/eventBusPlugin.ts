@@ -16,7 +16,7 @@ import {
 } from 'common-components/dist/socket/resource'
 import { PodResourceDefinition } from 'common-components/src/manifest/pod'
 
-function createPodDefinitionFromResource(pod: Pod): PodResourceDefinition {
+export function createPodDefinitionFromResource(pod: Pod): PodResourceDefinition {
   return {
     type: 'pod',
     metadata: pod.metadata,

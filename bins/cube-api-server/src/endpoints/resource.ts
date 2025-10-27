@@ -2,6 +2,7 @@ import {
   ApiServerApiApplyEndpoint,
   ApiServerApiListEndpoint,
   ApplyAction,
+  InferError,
   InferRequest,
   InferResponse,
   ResourceDefinition,
@@ -11,6 +12,8 @@ import { PodState } from 'common-components/src/manifest/pod'
 import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 import { Pod } from '../fastifyPlugins/resourcesPlugin'
 import { ContainerState } from 'common-components/src/manifest/container'
+import { ApiServerApiGetEndpoint } from 'common-components/dist/api/api-server/resources'
+import { createPodDefinitionFromResource } from '../fastifyPlugins/eventBusPlugin'
 
 async function applyPodHandler(
   fastify: FastifyInstance,
@@ -102,5 +105,38 @@ export const listHandler = async (
   const resourceType = urlParams.type as ResourceType
   if (resourceType === 'pod') {
     return listPodsHandler(fastify, request, reply)
+  }
+}
+
+function getPodHandler(fastify: FastifyInstance, podName: string, reply: FastifyReply) {
+  const pod = fastify.resourceStore.getAllPods().find((p) => p.metadata.name === podName)
+  if (!pod) {
+    const err: InferError<typeof ApiServerApiGetEndpoint> = {
+      code: 'RESOURCE_NOT_FOUND',
+      message: `Pod with name ${podName} not found`,
+    }
+    return reply.status(404).send(err)
+  }
+  const res: InferResponse<typeof ApiServerApiGetEndpoint> = {
+    resource: createPodDefinitionFromResource(pod),
+    eventsOverview: pod.events.map((event) => ({
+      timestamp: event.timestamp.toISOString(),
+      container: event.containerName ?? '',
+      message: event.message ?? '',
+    })),
+  }
+  return reply.status(200).send(res)
+}
+
+export const getHandler = async (
+  fastify: FastifyInstance,
+  request: FastifyRequest,
+  reply: FastifyReply,
+) => {
+  const urlParams = ApiServerApiGetEndpoint.getUrlParams(request.params)
+  const resourceType = urlParams.type as ResourceType
+  const resourceName = urlParams.name
+  if (resourceType === 'pod') {
+    return getPodHandler(fastify, resourceName, reply)
   }
 }
