@@ -1,0 +1,8 @@
+packages:
+  - packages/*
+
+allowBuilds:
+  esbuild: true
+
+minimumReleaseAgeExclude:
+  - globals@17.13.0

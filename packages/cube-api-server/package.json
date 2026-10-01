@@ -1,0 +1,17 @@
+{
+  "name": "cube-api-server",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "scripts": {
+    "build": "tsc -b",
+    "start": "node --enable-source-maps dist/index.js",
+    "dev": "tsx watch --clear-screen=false src/index.ts",
+    "typecheck": "tsc -b",
+    "clean": "rm -rf dist *.tsbuildinfo"
+  },
+  "dependencies": {
+    "cube-types": "workspace:*"
+  }
+}

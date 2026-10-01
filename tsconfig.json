@@ -1,0 +1,9 @@
+{
+  "files": [],
+  "references": [
+    { "path": "packages/cube-types" },
+    { "path": "packages/cube-api-server" },
+    { "path": "packages/cubelet" },
+    { "path": "packages/cube-cli" }
+  ]
+}
