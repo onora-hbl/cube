@@ -1,9 +1,9 @@
-import type { ResourceKind } from 'cube-types'
+import type { ResourceDefinition, ResourceKind } from 'cube-types'
 import type { FastifyPluginAsync } from 'fastify'
 import fp from 'fastify-plugin'
 
 export class WatchManager {
-  public onCreate(kind: ResourceKind) {}
+  public onCreate<K extends ResourceKind>(definition: ResourceDefinition<K>) {}
 
   public [Symbol.dispose]() {}
 }

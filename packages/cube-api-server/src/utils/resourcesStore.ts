@@ -96,7 +96,12 @@ class ResourcesStore {
       JSON.stringify(status),
     )
 
-    this.watchManager.onCreate(params.kind)
+    this.watchManager.onCreate({
+      kind: params.kind,
+      metadatas,
+      status,
+      spec: params.spec,
+    })
   }
 
   public [Symbol.dispose]() {}
