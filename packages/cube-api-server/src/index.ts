@@ -3,6 +3,7 @@ import Fastify, { type FastifyError } from 'fastify'
 import type { JsonSchemaToTsProvider } from '@fastify/type-provider-json-schema-to-ts'
 import dbPlugin from './utils/dbPlugin.js'
 import resourcesStorePlugin from './utils/resourcesStore.js'
+import watchManagerPlugin from './utils/watchManager.js'
 
 const PORT = 3000
 
@@ -12,6 +13,7 @@ async function main() {
   const app = Fastify().withTypeProvider<JsonSchemaToTsProvider>()
 
   await app.register(dbPlugin, { filePath: '/tmp/cube-db.sqlite' })
+  await app.register(watchManagerPlugin)
   await app.register(resourcesStorePlugin)
 
   app.addHook('onReady', () => {

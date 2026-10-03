@@ -11,6 +11,7 @@ import {
   type ResourceStatusMap,
 } from 'cube-types'
 import { v4 as uuid } from 'uuid'
+import type { WatchManager } from './watchManager.js'
 
 class ResourceAlreadyExistsError extends Error {
   constructor(kind: string, name: string) {
@@ -38,7 +39,10 @@ class ResourcesStore {
   private existsStmt
   private insertStmt
 
-  constructor(private db: Database.Database) {
+  constructor(
+    private db: Database.Database,
+    private watchManager: WatchManager,
+  ) {
     this.existsStmt = this.db.prepare<[string, string], { found: 0 | 1 }>(
       'SELECT EXISTS(SELECT 1 FROM resources WHERE kind = ? AND name = ?) AS found',
     )
@@ -91,6 +95,8 @@ class ResourcesStore {
       JSON.stringify(params.spec),
       JSON.stringify(status),
     )
+
+    this.watchManager.onCreate(params.kind)
   }
 
   public [Symbol.dispose]() {}
@@ -103,7 +109,7 @@ declare module 'fastify' {
 }
 
 const resourcesStorePlugin: FastifyPluginAsync = async (fastify) => {
-  const resourcesStore = new ResourcesStore(fastify.db)
+  const resourcesStore = new ResourcesStore(fastify.db, fastify.watchManager)
 
   fastify.decorate('resourcesStore', resourcesStore)
 
