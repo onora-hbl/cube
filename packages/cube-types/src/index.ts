@@ -137,3 +137,8 @@ export type ResourceStatusMap = {
 }
 
 export type ResourceStatus<K extends ResourceKind> = ResourceStatusMap[K]
+
+export enum CubeRole {
+  CLI = 'cube cli',
+  CUBELET = 'cubelet',
+}

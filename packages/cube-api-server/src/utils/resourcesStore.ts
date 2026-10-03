@@ -2,6 +2,7 @@ import type { FastifyPluginAsync } from 'fastify'
 import fp from 'fastify-plugin'
 import Database from 'better-sqlite3'
 import {
+  CubeRole,
   PodePhase,
   type ResourceKind,
   type ResourceMetadatas,
@@ -17,9 +18,20 @@ class ResourceAlreadyExistsError extends Error {
   }
 }
 
+class NotAuthorizedError extends Error {
+  constructor(message: string) {
+    super(message)
+  }
+}
+
 const DEFAULT_STATUS: ResourceStatusMap = {
   node: {},
   pod: { phase: PodePhase.PENDING },
+}
+
+const CREATE_RESOURCE_POLICY: Record<ResourceKind, CubeRole[]> = {
+  node: [CubeRole.CUBELET],
+  pod: [CubeRole.CLI],
 }
 
 class ResourcesStore {
@@ -47,11 +59,18 @@ class ResourcesStore {
     return DEFAULT_STATUS[kind]
   }
 
-  public async createResource<K extends ResourceKind>(params: {
-    kind: K
-    metadatas: { name: string; labels?: Record<string, string> }
-    spec: ResourceSpec<K>
-  }) {
+  public async createResource<K extends ResourceKind>(
+    params: {
+      kind: K
+      metadatas: { name: string; labels?: Record<string, string> }
+      spec: ResourceSpec<K>
+    },
+    role: CubeRole,
+  ) {
+    if (!CREATE_RESOURCE_POLICY[params.kind].includes(role)) {
+      throw new NotAuthorizedError(`Role ${role} is not authorized to create resource of kind ${params.kind}`)
+    }
+
     if (this.resourceExists(params.kind, params.metadatas.name)) {
       throw new ResourceAlreadyExistsError(params.kind, params.metadatas.name)
     }
