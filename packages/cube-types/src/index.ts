@@ -36,15 +36,17 @@ export const ResourceMetadatasSchema: JSONSchemaType<ResourceMetadatas> = {
 }
 
 export type NodeSpec = {
-  name: string
+  address: string
+  port: number
 }
 
 export const NodeSpecSchema: JSONSchemaType<NodeSpec> = {
   type: 'object',
   properties: {
-    name: { type: 'string' },
+    address: { type: 'string' },
+    port: { type: 'number' },
   },
-  required: ['name'],
+  required: ['address', 'port'],
   additionalProperties: false,
 }
 
