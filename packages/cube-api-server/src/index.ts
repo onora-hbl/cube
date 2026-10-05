@@ -12,13 +12,22 @@ import {
   type ResourceDefinition,
   type ResourceKind,
 } from 'cube-types'
+import { getRoleFromToken } from './utils/auth.js'
 
 const PORT = 3000
 
 let isAppReady = false
 
+declare module 'fastify' {
+  interface FastifyRequest {
+    role: CubeRole | null
+  }
+}
+
 async function main() {
   const app = Fastify().withTypeProvider<JsonSchemaToTsProvider>()
+
+  app.decorateRequest('role', null)
 
   await app.register(dbPlugin, { filePath: '/tmp/cube-db.sqlite' })
   await app.register(watchManagerPlugin)
@@ -87,14 +96,25 @@ async function main() {
     Body: CreateAnyResourceDefinition
     Reply: {
       201: { resource: ResourceDefinition<ResourceKind> }
+      401: { status: 'not_autorized' }
       403: { status: 'forbidden' }
       409: { status: 'conflict' }
+    }
+    Headers: {
+      authorization: string
     }
   }>({
     method: 'POST',
     url: '/resource',
     schema: {
       body: CreateResourceDefinitionSchema,
+      headers: {
+        type: 'object',
+        properties: {
+          authorization: { type: 'string' },
+        },
+        required: ['authorization'],
+      },
       response: {
         201: {
           type: 'object',
@@ -136,9 +156,20 @@ async function main() {
         },
       },
     },
+    preHandler: async (request, reply) => {
+      const authHeader = request.headers.authorization
+      if (!authHeader.startsWith('Bearer ')) {
+        return reply.code(401).send({ status: 'not_autorized' })
+      }
+      const role = getRoleFromToken(authHeader.substring('Bearer '.length))
+      if (role == null) {
+        return reply.code(403).send({ status: 'forbidden' })
+      }
+      request.role = role
+    },
     handler: async (request, reply) => {
       try {
-        const definition = app.resourcesStore.createResource(request.body, CubeRole.CUBELET)
+        const definition = app.resourcesStore.createResource(request.body, request.role as CubeRole)
         return reply.code(201).send({ resource: definition })
       } catch (e) {
         if (e instanceof NotAuthorizedError) {
