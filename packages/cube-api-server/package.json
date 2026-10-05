@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "@fastify/type-provider-json-schema-to-ts": "^5.0.0",
+    "ajv": "^8.20.0",
     "better-sqlite3": "^13.0.3",
     "cube-types": "workspace:*",
     "fastify": "^5.12.5",

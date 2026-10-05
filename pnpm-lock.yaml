@@ -206,6 +206,9 @@ importers:
       '@fastify/type-provider-json-schema-to-ts':
         specifier: ^5.0.0
         version: 5.0.0
+      ajv:
+        specifier: ^8.20.0
+        version: 8.20.0
       better-sqlite3:
         specifier: ^13.0.3
         version: 13.0.3

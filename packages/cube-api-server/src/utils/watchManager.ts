@@ -5,6 +5,8 @@ import fp from 'fastify-plugin'
 export class WatchManager {
   public onCreate<K extends ResourceKind>(definition: ResourceDefinition<K>) {}
 
+  public onUpdate<K extends ResourceKind>(definition: ResourceDefinition<K>) {}
+
   public [Symbol.dispose]() {}
 }
 

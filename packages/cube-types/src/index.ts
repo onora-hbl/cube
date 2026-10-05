@@ -187,6 +187,7 @@ export const ResourceDefinitionSchema: JSONSchemaType<AnyResourceDefinition> = {
 export type CreateResourceMetadatas = {
   name: string
   labels?: Record<string, string>
+  finalizers?: string[]
 }
 
 export const CreateResourceMetadatasSchema: JSONSchemaType<CreateResourceMetadatas> = {
@@ -198,6 +199,11 @@ export const CreateResourceMetadatasSchema: JSONSchemaType<CreateResourceMetadat
       additionalProperties: { type: 'string' },
       nullable: true,
       required: [],
+    },
+    finalizers: {
+      type: 'array',
+      items: { type: 'string' },
+      nullable: true,
     },
   },
   required: ['name'],

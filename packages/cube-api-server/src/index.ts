@@ -2,7 +2,11 @@ import logger from './utils/logger.js'
 import Fastify, { type FastifyError } from 'fastify'
 import type { JsonSchemaToTsProvider } from '@fastify/type-provider-json-schema-to-ts'
 import dbPlugin from './utils/dbPlugin.js'
-import resourcesStorePlugin, { NotAuthorizedError, ResourceAlreadyExistsError } from './utils/resourcesStore.js'
+import resourcesStorePlugin, {
+  NotAuthorizedError,
+  ResourceAlreadyExistsError,
+  ResourceNotFoundError,
+} from './utils/resourcesStore.js'
 import watchManagerPlugin from './utils/watchManager.js'
 import {
   CreateResourceDefinitionSchema,
@@ -13,6 +17,7 @@ import {
   type ResourceKind,
 } from 'cube-types'
 import { getRoleFromToken } from './utils/auth.js'
+import { InvalidPatchError, wrapPatch } from './utils/mergeUtils.js'
 
 const PORT = 3000
 
@@ -182,6 +187,64 @@ async function main() {
       }
     },
   })
+
+  for (const url of ['/resource/:kind/:name', '/resource/:kind/:name/*']) {
+    app.route<{
+      Headers: { authorization: string }
+      Params: { kind: ResourceKind; name: string; '*'?: string }
+      Body: unknown
+    }>({
+      method: 'PATCH',
+      url,
+      schema: {
+        headers: {
+          type: 'object',
+          properties: {
+            authorization: { type: 'string' },
+          },
+          required: ['authorization'],
+        },
+        params: {
+          type: 'object',
+          properties: {
+            kind: {
+              type: 'string',
+              enum: ['node', 'pod'],
+            },
+            name: { type: 'string' },
+          },
+          required: ['kind', 'name'],
+        },
+      },
+      preHandler: async (request, reply) => {
+        const authHeader = request.headers.authorization
+        if (!authHeader.startsWith('Bearer ')) {
+          return reply.code(401).send({ status: 'not_autorized' })
+        }
+        const role = getRoleFromToken(authHeader.substring('Bearer '.length))
+        if (role == null) {
+          return reply.code(403).send({ status: 'forbidden' })
+        }
+        request.role = role
+      },
+      handler: async (request, reply) => {
+        const path = (request.params['*'] ?? '').split('/').filter(Boolean)
+        try {
+          const patch = wrapPatch(path, request.body)
+          const resource = app.resourcesStore.patchResource(
+            { kind: request.params.kind, name: request.params.name, patch },
+            request.role as CubeRole,
+          )
+          return reply.code(200).send({ resource })
+        } catch (e) {
+          if (e instanceof NotAuthorizedError) return reply.code(403).send({ status: 'forbidden' })
+          if (e instanceof ResourceNotFoundError) return reply.code(404).send({ status: 'not_found' })
+          if (e instanceof InvalidPatchError) return reply.code(422).send({ status: 'invalid', message: e.message })
+          throw e
+        }
+      },
+    })
+  }
 
   logger.debug('Routes tree:\n' + app.printRoutes())
 
