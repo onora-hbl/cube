@@ -2,8 +2,16 @@ import logger from './utils/logger.js'
 import Fastify, { type FastifyError } from 'fastify'
 import type { JsonSchemaToTsProvider } from '@fastify/type-provider-json-schema-to-ts'
 import dbPlugin from './utils/dbPlugin.js'
-import resourcesStorePlugin from './utils/resourcesStore.js'
+import resourcesStorePlugin, { NotAuthorizedError, ResourceAlreadyExistsError } from './utils/resourcesStore.js'
 import watchManagerPlugin from './utils/watchManager.js'
+import {
+  CreateResourceDefinitionSchema,
+  CubeRole,
+  ResourceDefinitionSchema,
+  type CreateAnyResourceDefinition,
+  type ResourceDefinition,
+  type ResourceKind,
+} from 'cube-types'
 
 const PORT = 3000
 
@@ -72,6 +80,75 @@ async function main() {
         return reply.code(200).send({ status: 'ok' })
       }
       return reply.code(503).send({ code: 'NOT_READY', message: 'Cube API server is not ready yet' })
+    },
+  })
+
+  app.route<{
+    Body: CreateAnyResourceDefinition
+    Reply: {
+      201: { resource: ResourceDefinition<ResourceKind> }
+      403: { status: 'forbidden' }
+      409: { status: 'conflict' }
+    }
+  }>({
+    method: 'POST',
+    url: '/resource',
+    schema: {
+      body: CreateResourceDefinitionSchema,
+      response: {
+        201: {
+          type: 'object',
+          properties: {
+            resource: ResourceDefinitionSchema,
+          },
+          required: ['resource'],
+          additionalProperties: false,
+        },
+        401: {
+          type: 'object',
+          properties: {
+            status: {
+              enum: ['not_autorized'],
+            },
+          },
+          required: ['status'],
+          additionalProperties: false,
+        },
+        403: {
+          type: 'object',
+          properties: {
+            status: {
+              enum: ['forbidden'],
+            },
+          },
+          required: ['status'],
+          additionalProperties: false,
+        },
+        409: {
+          type: 'object',
+          properties: {
+            status: {
+              enum: ['conflict'],
+            },
+          },
+          required: ['status'],
+          additionalProperties: false,
+        },
+      },
+    },
+    handler: async (request, reply) => {
+      try {
+        const definition = app.resourcesStore.createResource(request.body, CubeRole.CUBELET)
+        return reply.code(201).send({ resource: definition })
+      } catch (e) {
+        if (e instanceof NotAuthorizedError) {
+          return reply.code(403).send({ status: 'forbidden' })
+        } else if (e instanceof ResourceAlreadyExistsError) {
+          return reply.code(409).send({ status: 'conflict' })
+        } else {
+          throw e
+        }
+      }
     },
   })
 

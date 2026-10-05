@@ -4,6 +4,7 @@ import Database from 'better-sqlite3'
 import {
   CubeRole,
   PodePhase,
+  type ResourceDefinition,
   type ResourceKind,
   type ResourceMetadatas,
   type ResourceSpec,
@@ -13,13 +14,13 @@ import {
 import { v4 as uuid } from 'uuid'
 import type { WatchManager } from './watchManager.js'
 
-class ResourceAlreadyExistsError extends Error {
+export class ResourceAlreadyExistsError extends Error {
   constructor(kind: string, name: string) {
     super(`Resource of kind "${kind}" with name "${name}" already exists.`)
   }
 }
 
-class NotAuthorizedError extends Error {
+export class NotAuthorizedError extends Error {
   constructor(message: string) {
     super(message)
   }
@@ -63,14 +64,14 @@ class ResourcesStore {
     return DEFAULT_STATUS[kind]
   }
 
-  public async createResource<K extends ResourceKind>(
+  public createResource<K extends ResourceKind>(
     params: {
       kind: K
-      metadatas: { name: string; labels?: Record<string, string> }
+      metadatas: CreateResourceMetadatas
       spec: ResourceSpec<K>
     },
     role: CubeRole,
-  ) {
+  ): ResourceDefinition<K> {
     if (!CREATE_RESOURCE_POLICY[params.kind].includes(role)) {
       throw new NotAuthorizedError(`Role ${role} is not authorized to create resource of kind ${params.kind}`)
     }
@@ -96,12 +97,16 @@ class ResourcesStore {
       JSON.stringify(status),
     )
 
-    this.watchManager.onCreate({
+    const definition: ResourceDefinition<K> = {
       kind: params.kind,
       metadatas,
       status,
       spec: params.spec,
-    })
+    }
+
+    this.watchManager.onCreate(definition)
+
+    return definition
   }
 
   public [Symbol.dispose]() {}

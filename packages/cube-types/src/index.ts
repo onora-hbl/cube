@@ -145,6 +145,94 @@ export type ResourceDefinition<K extends ResourceKind> = {
   spec: ResourceSpec<K>
 }
 
+export const NodeDefinitionSchema: JSONSchemaType<ResourceDefinition<'node'>> = {
+  type: 'object',
+  properties: {
+    kind: { type: 'string', const: 'node' },
+    metadatas: ResourceMetadatasSchema,
+    status: NodeStatusSchema,
+    spec: NodeSpecSchema,
+  },
+  required: ['kind', 'metadatas', 'status', 'spec'],
+  additionalProperties: false,
+}
+
+export const PodDefinitionSchema: JSONSchemaType<ResourceDefinition<'pod'>> = {
+  type: 'object',
+  properties: {
+    kind: { type: 'string', const: 'pod' },
+    metadatas: ResourceMetadatasSchema,
+    status: PodeStatusSchema,
+    spec: PodSpecSchema,
+  },
+  required: ['kind', 'metadatas', 'status', 'spec'],
+  additionalProperties: false,
+}
+
+export type AnyResourceDefinition = {
+  [K in ResourceKind]: ResourceDefinition<K>
+}[ResourceKind]
+
+export const ResourceDefinitionSchema: JSONSchemaType<AnyResourceDefinition> = {
+  oneOf: [NodeDefinitionSchema, PodDefinitionSchema],
+}
+
+export type CreateResourceMetadatas = {
+  name: string
+  labels?: Record<string, string>
+}
+
+export const CreateResourceMetadatasSchema: JSONSchemaType<CreateResourceMetadatas> = {
+  type: 'object',
+  properties: {
+    name: { type: 'string' },
+    labels: {
+      type: 'object',
+      additionalProperties: { type: 'string' },
+      nullable: true,
+      required: [],
+    },
+  },
+  required: ['name'],
+  additionalProperties: false,
+}
+
+export type CreateResourceDefinition<K extends ResourceKind> = {
+  kind: K
+  metadatas: CreateResourceMetadatas
+  spec: ResourceSpec<K>
+}
+
+export const CreateNodeDefinitionSchema: JSONSchemaType<CreateResourceDefinition<'node'>> = {
+  type: 'object',
+  properties: {
+    kind: { type: 'string', const: 'node' },
+    metadatas: CreateResourceMetadatasSchema,
+    spec: NodeSpecSchema,
+  },
+  required: ['kind', 'metadatas', 'spec'],
+  additionalProperties: false,
+}
+
+export const CreatePodDefinitionSchema: JSONSchemaType<CreateResourceDefinition<'pod'>> = {
+  type: 'object',
+  properties: {
+    kind: { type: 'string', const: 'pod' },
+    metadatas: CreateResourceMetadatasSchema,
+    spec: PodSpecSchema,
+  },
+  required: ['kind', 'metadatas', 'spec'],
+  additionalProperties: false,
+}
+
+export type CreateAnyResourceDefinition = {
+  [K in ResourceKind]: CreateResourceDefinition<K>
+}[ResourceKind]
+
+export const CreateResourceDefinitionSchema: JSONSchemaType<CreateAnyResourceDefinition> = {
+  oneOf: [CreateNodeDefinitionSchema, CreatePodDefinitionSchema],
+}
+
 export enum CubeRole {
   CLI = 'cube cli',
   CUBELET = 'cubelet',
