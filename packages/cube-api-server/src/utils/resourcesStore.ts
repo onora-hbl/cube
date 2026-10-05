@@ -21,7 +21,9 @@ import { v4 as uuid } from 'uuid'
 import type { WatchManager } from './watchManager.js'
 import { Ajv, type ValidateFunction } from 'ajv'
 import { assertPatchAllowed } from './patchPolicies.js'
-import { applyMergePatch, InvalidPatchError } from './mergeUtils.js'
+import { applyMergePatch, InvalidPatchError, type JsonObject } from './mergeUtils.js'
+
+const FINAL_DELETION_INTERVAL_MS = 5_000
 
 export class ResourceAlreadyExistsError extends Error {
   constructor(kind: string, name: string) {
@@ -51,6 +53,11 @@ const CREATE_RESOURCE_POLICY: Record<ResourceKind, CubeRole[]> = {
   pod: [CubeRole.CLI],
 }
 
+const DELETE_RESOURCE_POLICY: Record<ResourceKind, CubeRole[]> = {
+  node: [CubeRole.CUBELET],
+  pod: [CubeRole.CLI],
+}
+
 const ajv = new Ajv()
 const validateMetadatas = ajv.compile(ResourceMetadatasSchema)
 const VALIDATORS: Record<ResourceKind, { spec: ValidateFunction; status: ValidateFunction }> = {
@@ -63,6 +70,10 @@ class ResourcesStore {
   private insertStmt
   private selectStmt
   private updateStmt
+  private selectAllMetadatasStmt
+  private deleteStmt
+  private selectByIdStmt
+  private finalDeletionTimeout
 
   constructor(
     private db: Database.Database,
@@ -81,6 +92,15 @@ class ResourcesStore {
     this.updateStmt = this.db.prepare<[string, string, string, string, string], void>(
       'UPDATE resources SET metadatas = ?, spec = ?, status = ? WHERE kind = ? AND name = ?',
     )
+    this.selectAllMetadatasStmt = this.db.prepare<[], { id: string; kind: ResourceKind; metadatas: string }>(
+      'SELECT id, kind, metadatas FROM resources',
+    )
+    this.deleteStmt = this.db.prepare<[string], void>('DELETE FROM resources WHERE id = ?')
+    this.selectByIdStmt = this.db.prepare<[string], { kind: string; name: string } | undefined>(
+      'SELECT kind, name FROM resources WHERE id = ?',
+    )
+
+    this.finalDeletionTimeout = setInterval(() => this.finalDeletionTick(), FINAL_DELETION_INTERVAL_MS)
   }
 
   private resourceExists(kind: string, name: string): boolean {
@@ -101,6 +121,36 @@ class ResourcesStore {
       spec: JSON.parse(row?.spec ?? '{}') as ResourceSpec<K>,
       metadatas: JSON.parse(row?.metadatas ?? '{}') as ResourceMetadatas,
       status: JSON.parse(row?.status ?? '{}') as ResourceStatus<K>,
+    }
+  }
+
+  private selectAllResourcesIdForFinalDeletion(): { id: string; kind: ResourceKind }[] {
+    const rows = this.selectAllMetadatasStmt.all()
+    if (rows == null) {
+      return []
+    }
+    return rows
+      .filter((row) => {
+        const metadatas = JSON.parse(row.metadatas) as ResourceMetadatas
+        return metadatas.deletionTimestamp != null && metadatas.finalizers.length === 0
+      })
+      .map((row) => ({ id: row.id, kind: row.kind }))
+  }
+
+  private deleteResourceById(id: string) {
+    this.deleteStmt.run(id)
+  }
+
+  private selectResourceById<K extends ResourceKind>(id: string): ResourceDefinition<K> | undefined {
+    const row = this.selectByIdStmt.get(id)
+    if (row == null) {
+      return undefined
+    }
+    return {
+      kind: row.kind as K,
+      spec: JSON.parse(this.selectStmt.get(row.kind, row.name)?.spec ?? '{}') as ResourceSpec<K>,
+      metadatas: JSON.parse(this.selectStmt.get(row.kind, row.name)?.metadatas ?? '{}') as ResourceMetadatas,
+      status: JSON.parse(this.selectStmt.get(row.kind, row.name)?.status ?? '{}') as ResourceStatus<K>,
     }
   }
 
@@ -193,7 +243,33 @@ class ResourcesStore {
     return definition
   }
 
-  public [Symbol.dispose]() {}
+  public markResourceForDeletion<K extends ResourceKind>(kind: K, name: string, role: CubeRole): ResourceDefinition<K> {
+    if (!DELETE_RESOURCE_POLICY[kind].includes(role)) {
+      throw new NotAuthorizedError(`Role ${role} is not authorized to delete resource of kind ${kind}`)
+    }
+
+    const current = this.selectResource(kind, name)
+    if (current == null) throw new ResourceNotFoundError(kind, name)
+
+    const definition = this.patchResource(
+      { kind, name, patch: { metadatas: { deletionTimestamp: new Date().getTime() } } },
+      CubeRole.API_SERVER,
+    )
+
+    this.finalDeletionTick()
+
+    return definition
+  }
+
+  private finalDeletionTick() {
+    for (const resource of this.selectAllResourcesIdForFinalDeletion()) {
+      this.deleteResourceById(resource.id)
+    }
+  }
+
+  public [Symbol.dispose]() {
+    clearInterval(this.finalDeletionTimeout)
+  }
 }
 
 declare module 'fastify' {

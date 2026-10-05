@@ -246,6 +246,57 @@ async function main() {
     })
   }
 
+  app.route({
+    method: 'DELETE',
+    url: '/resource/:kind/:name',
+    schema: {
+      headers: {
+        type: 'object',
+        properties: {
+          authorization: { type: 'string' },
+        },
+        required: ['authorization'],
+      },
+      params: {
+        type: 'object',
+        properties: {
+          kind: {
+            type: 'string',
+            enum: ['node', 'pod'],
+          },
+          name: { type: 'string' },
+        },
+        required: ['kind', 'name'],
+      },
+    },
+    preHandler: async (request, reply) => {
+      const authHeader = request.headers.authorization
+      if (!authHeader.startsWith('Bearer ')) {
+        return reply.code(401).send({ status: 'not_autorized' })
+      }
+      const role = getRoleFromToken(authHeader.substring('Bearer '.length))
+      if (role == null) {
+        return reply.code(403).send({ status: 'forbidden' })
+      }
+      request.role = role
+    },
+    handler: async (request, reply) => {
+      try {
+        const resource = app.resourcesStore.markResourceForDeletion(
+          request.params.kind,
+          request.params.name,
+          request.role as CubeRole,
+        )
+        return reply.code(200).send({ resource })
+      } catch (e) {
+        if (e instanceof NotAuthorizedError) return reply.code(403).send({ status: 'forbidden' })
+        if (e instanceof ResourceNotFoundError) return reply.code(404).send({ status: 'not_found' })
+        if (e instanceof InvalidPatchError) return reply.code(422).send({ status: 'invalid', message: e.message })
+        throw e
+      }
+    },
+  })
+
   logger.debug('Routes tree:\n' + app.printRoutes())
 
   await app.listen({

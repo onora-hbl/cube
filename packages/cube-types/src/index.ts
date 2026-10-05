@@ -251,4 +251,5 @@ export const CreateResourceDefinitionSchema: JSONSchemaType<CreateAnyResourceDef
 export enum CubeRole {
   CLI = 'cube cli',
   CUBELET = 'cubelet',
+  API_SERVER = 'api server',
 }

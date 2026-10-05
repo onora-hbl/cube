@@ -5,20 +5,25 @@ import { NotAuthorizedError } from './resourcesStore.js'
 type Rule = { pattern: string[]; roles: CubeRole[] }
 
 const PATCH_POLICY: Record<ResourceKind, Rule[]> = {
-  node: [{ pattern: ['status'], roles: [CubeRole.CUBELET] }],
-  pod: [
+  node: [
     { pattern: ['status'], roles: [CubeRole.CUBELET] },
-    { pattern: ['metadatas', 'labels'], roles: [CubeRole.CLI] },
-    { pattern: ['metadatas', 'finalizers'], roles: [CubeRole.CLI, CubeRole.CUBELET] },
+    { pattern: ['metadatas', 'finalizers'], roles: [] },
   ],
+  pod: [{ pattern: ['status'], roles: [CubeRole.CUBELET] }],
 }
+
+const ALL_KINDS_POLICY: Rule[] = [
+  { pattern: ['metadatas', 'labels'], roles: [CubeRole.CLI] },
+  { pattern: ['metadatas', 'finalizers'], roles: [CubeRole.CLI, CubeRole.CUBELET] },
+  { pattern: ['metadatas', 'deletionTimestamp'], roles: [CubeRole.API_SERVER] },
+]
 
 function matches(pattern: string[], path: string[]): boolean {
   return pattern.length <= path.length && pattern.every((segment, i) => segment === '*' || segment === path[i])
 }
 
 function resolveRule(kind: ResourceKind, path: string[]): Rule | undefined {
-  return PATCH_POLICY[kind]
+  return [...PATCH_POLICY[kind], ...ALL_KINDS_POLICY]
     .filter((rule) => matches(rule.pattern, path))
     .sort((a, b) => b.pattern.length - a.pattern.length)[0]
 }

@@ -7,6 +7,8 @@ export class WatchManager {
 
   public onUpdate<K extends ResourceKind>(definition: ResourceDefinition<K>) {}
 
+  public onDelete<K extends ResourceKind>(definition: ResourceDefinition<K>) {}
+
   public [Symbol.dispose]() {}
 }
 
