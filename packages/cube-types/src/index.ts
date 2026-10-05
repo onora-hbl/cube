@@ -8,6 +8,8 @@ export type ResourceMetadatas = {
   labels?: Record<string, string>
   creationTimestamp: number
   deletionTimestamp?: number
+  resourceVersion: number
+  finalizers: string[]
 }
 
 export const ResourceMetadatasSchema: JSONSchemaType<ResourceMetadatas> = {
@@ -23,8 +25,13 @@ export const ResourceMetadatasSchema: JSONSchemaType<ResourceMetadatas> = {
     },
     creationTimestamp: { type: 'number' },
     deletionTimestamp: { type: 'number', nullable: true },
+    resourceVersion: { type: 'number' },
+    finalizers: {
+      type: 'array',
+      items: { type: 'string' },
+    },
   },
-  required: ['id', 'name', 'creationTimestamp'],
+  required: ['id', 'name', 'creationTimestamp', 'resourceVersion', 'finalizers'],
   additionalProperties: false,
 }
 

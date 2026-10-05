@@ -4,6 +4,7 @@ import Database from 'better-sqlite3'
 import {
   CubeRole,
   PodePhase,
+  type CreateResourceMetadatas,
   type ResourceDefinition,
   type ResourceKind,
   type ResourceMetadatas,
@@ -85,6 +86,8 @@ class ResourcesStore {
       id,
       ...params.metadatas,
       creationTimestamp: new Date().getTime(),
+      resourceVersion: 1,
+      finalizers: [],
     }
     const status = this.getDefaultStatus(params.kind)
 
