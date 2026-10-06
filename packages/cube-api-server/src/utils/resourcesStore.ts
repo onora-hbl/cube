@@ -53,9 +53,8 @@ class ResourcesStore {
   private insertStmt
   private selectStmt
   private updateStmt
-  private selectAllMetadatasStmt
+  private selectAllStmt
   private deleteStmt
-  private selectByIdStmt
   private finalDeletionTimeout
 
   constructor(
@@ -75,23 +74,33 @@ class ResourcesStore {
     this.updateStmt = this.db.prepare<[string, string, string, string, string], void>(
       'UPDATE resources SET metadatas = ?, spec = ?, status = ? WHERE kind = ? AND name = ?',
     )
-    this.selectAllMetadatasStmt = this.db.prepare<[], { id: string; kind: ResourceKind; metadatas: string }>(
-      'SELECT id, kind, metadatas FROM resources',
-    )
+    this.selectAllStmt = this.db.prepare<
+      [],
+      { id: string; kind: ResourceKind; metadatas: string; spec: string; status: string }
+    >('SELECT id, kind, metadatas, spec, status FROM resources')
     this.deleteStmt = this.db.prepare<[string], void>('DELETE FROM resources WHERE id = ?')
-    this.selectByIdStmt = this.db.prepare<[string], { kind: string; name: string } | undefined>(
-      'SELECT kind, name FROM resources WHERE id = ?',
-    )
 
     this.finalDeletionTimeout = setInterval(() => this.finalDeletionTick(), FINAL_DELETION_INTERVAL_MS)
   }
 
-  private resourceExists(kind: string, name: string): boolean {
+  private resourceExists(kind: ResourceKind, name: string): boolean {
     return this.existsStmt.get(kind, name)!.found === 1
   }
 
-  private insertResource(id: string, kind: string, name: string, metadatas: string, spec: string, status: string) {
-    this.insertStmt.run(id, kind, name, metadatas, spec, status)
+  private insertResource<K extends ResourceKind>(
+    kind: K,
+    metadatas: ResourceMetadatas,
+    spec: ResourceSpec<K>,
+    status: ResourceStatus<K>,
+  ) {
+    this.insertStmt.run(
+      metadatas.id,
+      kind,
+      metadatas.name,
+      JSON.stringify(metadatas),
+      JSON.stringify(spec),
+      JSON.stringify(status),
+    )
   }
 
   private selectResource<K extends ResourceKind>(kind: K, name: string): ResourceDefinition<K> | undefined {
@@ -107,8 +116,8 @@ class ResourcesStore {
     }
   }
 
-  private selectAllResourcesIdForFinalDeletion(): { id: string; kind: ResourceKind }[] {
-    const rows = this.selectAllMetadatasStmt.all()
+  private selectAllResourcesIdForFinalDeletion(): ResourceDefinition<ResourceKind>[] {
+    const rows = this.selectAllStmt.all()
     if (rows == null) {
       return []
     }
@@ -117,24 +126,16 @@ class ResourcesStore {
         const metadatas = JSON.parse(row.metadatas) as ResourceMetadatas
         return metadatas.deletionTimestamp != null && metadatas.finalizers.length === 0
       })
-      .map((row) => ({ id: row.id, kind: row.kind }))
+      .map((row) => ({
+        kind: row.kind,
+        spec: JSON.parse(row.spec) as ResourceSpec<ResourceKind>,
+        metadatas: JSON.parse(row.metadatas) as ResourceMetadatas,
+        status: JSON.parse(row.status) as ResourceStatus<ResourceKind>,
+      }))
   }
 
   private deleteResourceById(id: string) {
     this.deleteStmt.run(id)
-  }
-
-  private selectResourceById<K extends ResourceKind>(id: string): ResourceDefinition<K> | undefined {
-    const row = this.selectByIdStmt.get(id)
-    if (row == null) {
-      return undefined
-    }
-    return {
-      kind: row.kind as K,
-      spec: JSON.parse(this.selectStmt.get(row.kind, row.name)?.spec ?? '{}') as ResourceSpec<K>,
-      metadatas: JSON.parse(this.selectStmt.get(row.kind, row.name)?.metadatas ?? '{}') as ResourceMetadatas,
-      status: JSON.parse(this.selectStmt.get(row.kind, row.name)?.status ?? '{}') as ResourceStatus<K>,
-    }
   }
 
   private updateResource<K extends ResourceKind>(
@@ -177,14 +178,7 @@ class ResourcesStore {
     }
     const status = this.getDefaultStatus(params.kind)
 
-    this.insertResource(
-      id,
-      params.kind,
-      metadatas.name,
-      JSON.stringify(metadatas),
-      JSON.stringify(params.spec),
-      JSON.stringify(status),
-    )
+    this.insertResource(params.kind, metadatas, params.spec, status)
 
     const definition: ResourceDefinition<K> = {
       kind: params.kind,
@@ -246,9 +240,8 @@ class ResourcesStore {
 
   private finalDeletionTick() {
     for (const resource of this.selectAllResourcesIdForFinalDeletion()) {
-      const definition = this.selectResourceById(resource.id)
-      this.deleteResourceById(resource.id)
-      this.watchManager.onDelete(definition!)
+      this.deleteResourceById(resource.metadatas.id)
+      this.watchManager.onDelete(resource)
     }
   }
 
