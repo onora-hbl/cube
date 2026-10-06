@@ -199,6 +199,48 @@ async function main() {
     },
   })
 
+  app.route({
+    method: 'GET',
+    url: '/resource/:kind',
+    schema: {
+      querystring: {
+        type: 'object',
+        properties: {
+          watch: { type: 'boolean', default: false },
+        },
+        additionalProperties: false,
+      },
+      params: {
+        type: 'object',
+        properties: {
+          kind: {
+            type: 'string',
+            enum: ['node', 'pod'],
+          },
+          name: { type: 'string' },
+        },
+        required: ['kind'],
+      },
+    },
+    preHandler: authenticate,
+    handler: (request, reply) => {
+      const { kind } = request.params
+      if (!request.query.watch) {
+        return reply.code(200).send({ resources: app.resourcesStore.listResources(kind) })
+      }
+
+      reply.hijack()
+      reply.raw.writeHead(200, { 'Content-Type': 'application/x-ndjson', 'Cache-Control': 'no-cache' })
+      reply.raw.flushHeaders()
+
+      const unsubscribe = app.watchManager.subscribe(kind, (event) => {
+        reply.raw.write(`${JSON.stringify(event)}\n`)
+      })
+      reply.raw.on('close', unsubscribe)
+      return reply
+    },
+  })
+
   logger.debug('Routes tree:\n' + app.printRoutes())
 
   await app.listen({

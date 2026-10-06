@@ -134,6 +134,19 @@ class ResourcesStore {
       }))
   }
 
+  private selectAllResources(): ResourceDefinition<ResourceKind>[] {
+    const rows = this.selectAllStmt.all()
+    if (rows == null) {
+      return []
+    }
+    return rows.map((row) => ({
+      kind: row.kind,
+      spec: JSON.parse(row.spec) as ResourceSpec<ResourceKind>,
+      metadatas: JSON.parse(row.metadatas) as ResourceMetadatas,
+      status: JSON.parse(row.status) as ResourceStatus<ResourceKind>,
+    }))
+  }
+
   private deleteResourceById(id: string) {
     this.deleteStmt.run(id)
   }
@@ -243,6 +256,10 @@ class ResourcesStore {
       this.deleteResourceById(resource.metadatas.id)
       this.watchManager.onDelete(resource)
     }
+  }
+
+  public listResources<K extends ResourceKind>(kind: K): ResourceDefinition<K>[] {
+    return this.selectAllResources().filter((resource) => resource.kind === kind) as ResourceDefinition<K>[]
   }
 
   public [Symbol.dispose]() {
