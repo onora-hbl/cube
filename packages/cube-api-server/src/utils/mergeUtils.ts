@@ -1,8 +1,4 @@
-export class InvalidPatchError extends Error {
-  constructor(message: string) {
-    super(message)
-  }
-}
+import { InvalidPatchError } from './errors.js'
 
 export type JsonObject = Record<string, unknown>
 

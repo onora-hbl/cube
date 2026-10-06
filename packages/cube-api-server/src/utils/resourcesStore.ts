@@ -21,27 +21,10 @@ import { v4 as uuid } from 'uuid'
 import type { WatchManager } from './watchManager.js'
 import { Ajv, type ValidateFunction } from 'ajv'
 import { assertPatchAllowed } from './patchPolicies.js'
-import { applyMergePatch, InvalidPatchError, type JsonObject } from './mergeUtils.js'
+import { applyMergePatch, type JsonObject } from './mergeUtils.js'
+import { ForbiddenError, InvalidPatchError, ResourceAlreadyExistsError, ResourceNotFoundError } from './errors.js'
 
 const FINAL_DELETION_INTERVAL_MS = 5_000
-
-export class ResourceAlreadyExistsError extends Error {
-  constructor(kind: string, name: string) {
-    super(`Resource of kind "${kind}" with name "${name}" already exists.`)
-  }
-}
-
-export class NotAuthorizedError extends Error {
-  constructor(message: string) {
-    super(message)
-  }
-}
-
-export class ResourceNotFoundError extends Error {
-  constructor(kind: string, name: string) {
-    super(`Resource of kind "${kind}" with name "${name}" not found.`)
-  }
-}
 
 const DEFAULT_STATUS: ResourceStatusMap = {
   node: {},
@@ -177,7 +160,7 @@ class ResourcesStore {
     role: CubeRole,
   ): ResourceDefinition<K> {
     if (!CREATE_RESOURCE_POLICY[params.kind].includes(role)) {
-      throw new NotAuthorizedError(`Role ${role} is not authorized to create resource of kind ${params.kind}`)
+      throw new ForbiddenError(`Role ${role} is not authorized to create resource of kind ${params.kind}`)
     }
 
     if (this.resourceExists(params.kind, params.metadatas.name)) {
@@ -245,7 +228,7 @@ class ResourcesStore {
 
   public markResourceForDeletion<K extends ResourceKind>(kind: K, name: string, role: CubeRole): ResourceDefinition<K> {
     if (!DELETE_RESOURCE_POLICY[kind].includes(role)) {
-      throw new NotAuthorizedError(`Role ${role} is not authorized to delete resource of kind ${kind}`)
+      throw new ForbiddenError(`Role ${role} is not authorized to delete resource of kind ${kind}`)
     }
 
     const current = this.selectResource(kind, name)
@@ -263,7 +246,9 @@ class ResourcesStore {
 
   private finalDeletionTick() {
     for (const resource of this.selectAllResourcesIdForFinalDeletion()) {
+      const definition = this.selectResourceById(resource.id)
       this.deleteResourceById(resource.id)
+      this.watchManager.onDelete(definition!)
     }
   }
 

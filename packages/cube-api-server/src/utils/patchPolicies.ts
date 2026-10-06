@@ -1,6 +1,6 @@
 import { CubeRole, type ResourceKind } from 'cube-types'
 import { isJsonObject, type JsonObject } from './mergeUtils.js'
-import { NotAuthorizedError } from './resourcesStore.js'
+import { NotAuthorizedError } from './errors.js'
 
 type Rule = { pattern: string[]; roles: CubeRole[] }
 

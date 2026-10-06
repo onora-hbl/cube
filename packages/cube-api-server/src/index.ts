@@ -1,12 +1,8 @@
 import logger from './utils/logger.js'
-import Fastify, { type FastifyError } from 'fastify'
+import Fastify, { type FastifyError, type FastifyReply, type FastifyRequest } from 'fastify'
 import type { JsonSchemaToTsProvider } from '@fastify/type-provider-json-schema-to-ts'
 import dbPlugin from './utils/dbPlugin.js'
-import resourcesStorePlugin, {
-  NotAuthorizedError,
-  ResourceAlreadyExistsError,
-  ResourceNotFoundError,
-} from './utils/resourcesStore.js'
+import resourcesStorePlugin from './utils/resourcesStore.js'
 import watchManagerPlugin from './utils/watchManager.js'
 import {
   CreateResourceDefinitionSchema,
@@ -17,7 +13,8 @@ import {
   type ResourceKind,
 } from 'cube-types'
 import { getRoleFromToken } from './utils/auth.js'
-import { InvalidPatchError, wrapPatch } from './utils/mergeUtils.js'
+import { wrapPatch } from './utils/mergeUtils.js'
+import { CubeError, ForbiddenError, NotAuthorizedError } from './utils/errors.js'
 
 const PORT = 3000
 
@@ -27,6 +24,21 @@ declare module 'fastify' {
   interface FastifyRequest {
     role: CubeRole | null
   }
+}
+
+const authenticate = async (request: FastifyRequest, _reply: FastifyReply) => {
+  const authHeader = request.headers.authorization
+  if (authHeader == null) {
+    throw new NotAuthorizedError('Authorization header is missing')
+  }
+  if (!authHeader.startsWith('Bearer ')) {
+    throw new NotAuthorizedError('Authorization header must start with "Bearer "')
+  }
+  const role = getRoleFromToken(authHeader.substring('Bearer '.length))
+  if (role == null) {
+    throw new ForbiddenError('Invalid token')
+  }
+  request.role = role
 }
 
 async function main() {
@@ -42,21 +54,23 @@ async function main() {
     isAppReady = true
   })
 
-  app.setErrorHandler<FastifyError>((error, request, reply) => {
+  app.setErrorHandler<FastifyError | CubeError>((error, request, reply) => {
+    if (error instanceof CubeError) {
+      return error.writeReply(reply)
+    }
     if (error.validation) {
       const err = {
         code: 'BAD_REQUEST',
         message: 'Invalid request data - ' + JSON.stringify(error.validation),
       }
-      reply.status(400).send(err)
-    } else {
-      logger.error({ err: error }, `Error in request ${request.method} ${request.url}`)
-      const errorResponse = {
-        code: 'INTERNAL_ERROR',
-        message: 'Internal server error',
-      }
-      reply.status(500).send(errorResponse)
+      return reply.status(400).send(err)
     }
+    logger.error({ err: error }, `Error in request ${request.method} ${request.url}`)
+    const errorResponse = {
+      code: 'INTERNAL_ERROR',
+      message: 'Internal server error',
+    }
+    return reply.status(500).send(errorResponse)
   })
 
   app.route({
@@ -101,25 +115,12 @@ async function main() {
     Body: CreateAnyResourceDefinition
     Reply: {
       201: { resource: ResourceDefinition<ResourceKind> }
-      401: { status: 'not_autorized' }
-      403: { status: 'forbidden' }
-      409: { status: 'conflict' }
-    }
-    Headers: {
-      authorization: string
     }
   }>({
     method: 'POST',
     url: '/resource',
     schema: {
       body: CreateResourceDefinitionSchema,
-      headers: {
-        type: 'object',
-        properties: {
-          authorization: { type: 'string' },
-        },
-        required: ['authorization'],
-      },
       response: {
         201: {
           type: 'object',
@@ -129,81 +130,23 @@ async function main() {
           required: ['resource'],
           additionalProperties: false,
         },
-        401: {
-          type: 'object',
-          properties: {
-            status: {
-              enum: ['not_autorized'],
-            },
-          },
-          required: ['status'],
-          additionalProperties: false,
-        },
-        403: {
-          type: 'object',
-          properties: {
-            status: {
-              enum: ['forbidden'],
-            },
-          },
-          required: ['status'],
-          additionalProperties: false,
-        },
-        409: {
-          type: 'object',
-          properties: {
-            status: {
-              enum: ['conflict'],
-            },
-          },
-          required: ['status'],
-          additionalProperties: false,
-        },
       },
     },
-    preHandler: async (request, reply) => {
-      const authHeader = request.headers.authorization
-      if (!authHeader.startsWith('Bearer ')) {
-        return reply.code(401).send({ status: 'not_autorized' })
-      }
-      const role = getRoleFromToken(authHeader.substring('Bearer '.length))
-      if (role == null) {
-        return reply.code(403).send({ status: 'forbidden' })
-      }
-      request.role = role
-    },
+    preHandler: authenticate,
     handler: async (request, reply) => {
-      try {
-        const definition = app.resourcesStore.createResource(request.body, request.role as CubeRole)
-        return reply.code(201).send({ resource: definition })
-      } catch (e) {
-        if (e instanceof NotAuthorizedError) {
-          return reply.code(403).send({ status: 'forbidden' })
-        } else if (e instanceof ResourceAlreadyExistsError) {
-          return reply.code(409).send({ status: 'conflict' })
-        } else {
-          throw e
-        }
-      }
+      const definition = app.resourcesStore.createResource(request.body, request.role as CubeRole)
+      return reply.code(201).send({ resource: definition })
     },
   })
 
   for (const url of ['/resource/:kind/:name', '/resource/:kind/:name/*']) {
     app.route<{
-      Headers: { authorization: string }
       Params: { kind: ResourceKind; name: string; '*'?: string }
       Body: unknown
     }>({
       method: 'PATCH',
       url,
       schema: {
-        headers: {
-          type: 'object',
-          properties: {
-            authorization: { type: 'string' },
-          },
-          required: ['authorization'],
-        },
         params: {
           type: 'object',
           properties: {
@@ -216,32 +159,15 @@ async function main() {
           required: ['kind', 'name'],
         },
       },
-      preHandler: async (request, reply) => {
-        const authHeader = request.headers.authorization
-        if (!authHeader.startsWith('Bearer ')) {
-          return reply.code(401).send({ status: 'not_autorized' })
-        }
-        const role = getRoleFromToken(authHeader.substring('Bearer '.length))
-        if (role == null) {
-          return reply.code(403).send({ status: 'forbidden' })
-        }
-        request.role = role
-      },
+      preHandler: authenticate,
       handler: async (request, reply) => {
         const path = (request.params['*'] ?? '').split('/').filter(Boolean)
-        try {
-          const patch = wrapPatch(path, request.body)
-          const resource = app.resourcesStore.patchResource(
-            { kind: request.params.kind, name: request.params.name, patch },
-            request.role as CubeRole,
-          )
-          return reply.code(200).send({ resource })
-        } catch (e) {
-          if (e instanceof NotAuthorizedError) return reply.code(403).send({ status: 'forbidden' })
-          if (e instanceof ResourceNotFoundError) return reply.code(404).send({ status: 'not_found' })
-          if (e instanceof InvalidPatchError) return reply.code(422).send({ status: 'invalid', message: e.message })
-          throw e
-        }
+        const patch = wrapPatch(path, request.body)
+        const resource = app.resourcesStore.patchResource(
+          { kind: request.params.kind, name: request.params.name, patch },
+          request.role as CubeRole,
+        )
+        return reply.code(200).send({ resource })
       },
     })
   }
@@ -250,13 +176,6 @@ async function main() {
     method: 'DELETE',
     url: '/resource/:kind/:name',
     schema: {
-      headers: {
-        type: 'object',
-        properties: {
-          authorization: { type: 'string' },
-        },
-        required: ['authorization'],
-      },
       params: {
         type: 'object',
         properties: {
@@ -269,31 +188,14 @@ async function main() {
         required: ['kind', 'name'],
       },
     },
-    preHandler: async (request, reply) => {
-      const authHeader = request.headers.authorization
-      if (!authHeader.startsWith('Bearer ')) {
-        return reply.code(401).send({ status: 'not_autorized' })
-      }
-      const role = getRoleFromToken(authHeader.substring('Bearer '.length))
-      if (role == null) {
-        return reply.code(403).send({ status: 'forbidden' })
-      }
-      request.role = role
-    },
+    preHandler: authenticate,
     handler: async (request, reply) => {
-      try {
-        const resource = app.resourcesStore.markResourceForDeletion(
-          request.params.kind,
-          request.params.name,
-          request.role as CubeRole,
-        )
-        return reply.code(200).send({ resource })
-      } catch (e) {
-        if (e instanceof NotAuthorizedError) return reply.code(403).send({ status: 'forbidden' })
-        if (e instanceof ResourceNotFoundError) return reply.code(404).send({ status: 'not_found' })
-        if (e instanceof InvalidPatchError) return reply.code(422).send({ status: 'invalid', message: e.message })
-        throw e
-      }
+      const resource = app.resourcesStore.markResourceForDeletion(
+        request.params.kind,
+        request.params.name,
+        request.role as CubeRole,
+      )
+      return reply.code(200).send({ resource })
     },
   })
 
