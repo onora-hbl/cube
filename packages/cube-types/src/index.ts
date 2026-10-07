@@ -2,6 +2,8 @@ import type { JSONSchemaType, SchemaObject } from 'ajv'
 
 export type ResourceKind = 'node' | 'pod'
 
+export const RESOURCE_KINDS = ['node', 'pod']
+
 export type ResourceMetadatas = {
   id: string
   name: string
