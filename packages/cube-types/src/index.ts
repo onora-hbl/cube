@@ -1,4 +1,4 @@
-import type { JSONSchemaType } from 'ajv'
+import type { JSONSchemaType, SchemaObject } from 'ajv'
 
 export type ResourceKind = 'node' | 'pod'
 
@@ -178,6 +178,11 @@ export const PodDefinitionSchema: JSONSchemaType<ResourceDefinition<'pod'>> = {
   },
   required: ['kind', 'metadatas', 'status', 'spec'],
   additionalProperties: false,
+}
+
+export const DEFINITION_SCHEMAS: Record<ResourceKind, SchemaObject> = {
+  node: NodeDefinitionSchema,
+  pod: PodDefinitionSchema,
 }
 
 export type AnyResourceDefinition = {

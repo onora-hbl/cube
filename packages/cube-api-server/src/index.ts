@@ -3,7 +3,7 @@ import Fastify, { type FastifyError, type FastifyReply, type FastifyRequest } fr
 import type { JsonSchemaToTsProvider } from '@fastify/type-provider-json-schema-to-ts'
 import dbPlugin from './utils/dbPlugin.js'
 import resourcesStorePlugin from './utils/resourcesStore.js'
-import watchManagerPlugin from './utils/watchManager.js'
+import watchManagerPlugin, { type Filter } from './utils/watchManager.js'
 import {
   CreateResourceDefinitionSchema,
   CubeRole,
@@ -15,6 +15,7 @@ import {
 import { getRoleFromToken } from './utils/auth.js'
 import { wrapPatch } from './utils/mergeUtils.js'
 import { CubeError, ForbiddenError, NotAuthorizedError } from './utils/errors.js'
+import { getFilterFromFieldSelector } from './utils/fieldSelectorUtils.js'
 
 const PORT = 3000
 
@@ -207,6 +208,7 @@ async function main() {
         type: 'object',
         properties: {
           watch: { type: 'boolean', default: false },
+          fieldSelector: { type: 'string' },
         },
         additionalProperties: false,
       },
@@ -225,17 +227,24 @@ async function main() {
     preHandler: authenticate,
     handler: (request, reply) => {
       const { kind } = request.params
+      const filter = request.query.fieldSelector
+        ? getFilterFromFieldSelector(kind, request.query.fieldSelector)
+        : undefined
       if (!request.query.watch) {
-        return reply.code(200).send({ resources: app.resourcesStore.listResources(kind) })
+        return reply.code(200).send({ resources: app.resourcesStore.listResources(kind, filter) })
       }
 
       reply.hijack()
       reply.raw.writeHead(200, { 'Content-Type': 'application/x-ndjson', 'Cache-Control': 'no-cache' })
       reply.raw.flushHeaders()
 
-      const unsubscribe = app.watchManager.subscribe(kind, (event) => {
-        reply.raw.write(`${JSON.stringify(event)}\n`)
-      })
+      const unsubscribe = app.watchManager.subscribe(
+        kind,
+        (event) => {
+          reply.raw.write(`${JSON.stringify(event)}\n`)
+        },
+        filter,
+      )
       reply.raw.on('close', unsubscribe)
       return reply
     },

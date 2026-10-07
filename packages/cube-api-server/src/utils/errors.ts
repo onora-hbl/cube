@@ -47,3 +47,9 @@ export class ResourceNotFoundError extends CubeError {
     super(404, 'RESOURCE_NOT_FOUND', `Resource of kind "${kind}" with name "${name}" not found`)
   }
 }
+
+export class InvalidFieldSelector extends CubeError {
+  constructor(message: string) {
+    super(400, 'INVALID_FIELD_SELECTOR', message)
+  }
+}

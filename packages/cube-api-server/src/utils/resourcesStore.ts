@@ -18,7 +18,7 @@ import {
   type ResourceStatusMap,
 } from 'cube-types'
 import { v4 as uuid } from 'uuid'
-import type { WatchManager } from './watchManager.js'
+import type { Filter, WatchManager } from './watchManager.js'
 import { Ajv, type ValidateFunction } from 'ajv'
 import { assertPatchAllowed } from './patchPolicies.js'
 import { applyMergePatch, type JsonObject } from './mergeUtils.js'
@@ -305,8 +305,10 @@ class ResourcesStore {
     }
   }
 
-  public listResources<K extends ResourceKind>(kind: K): ResourceDefinition<K>[] {
-    return this.selectAllResources().filter((resource) => resource.kind === kind) as ResourceDefinition<K>[]
+  public listResources<K extends ResourceKind>(kind: K, filter?: Filter): ResourceDefinition<K>[] {
+    return this.selectAllResources()
+      .filter((resource) => resource.kind === kind)
+      .filter((resource) => filter == null || filter(resource)) as ResourceDefinition<K>[]
   }
 
   public [Symbol.dispose]() {

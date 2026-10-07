@@ -15,7 +15,7 @@ type Change = {
   current: ResourceDefinition<ResourceKind> | null
 }
 
-type Filter = (resource: ResourceDefinition<ResourceKind>) => boolean
+export type Filter = (resource: ResourceDefinition<ResourceKind>) => boolean
 
 type Listener = (event: WatchEvent) => void
 
