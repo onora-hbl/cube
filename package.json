@@ -23,7 +23,7 @@
     "run:cubelet": "pnpm --filter cubelet start",
     "dev:cubelet": "pnpm --filter cubelet dev",
     "build:cube-cli": "pnpm --filter cube-cli... build",
-    "run:cube-cli": "pnpm --filter cube-cli start"
+    "run:cube-cli": "pnpm --filter cube-cli run run"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

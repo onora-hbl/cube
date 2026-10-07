@@ -9,6 +9,7 @@
   "scripts": {
     "build": "tsc -b",
     "start": "node --enable-source-maps dist/index.js",
+    "run": "pnpm run build && pnpm run start",
     "typecheck": "tsc -b",
     "clean": "rm -rf dist *.tsbuildinfo"
   },
