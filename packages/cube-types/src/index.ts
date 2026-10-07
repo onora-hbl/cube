@@ -90,9 +90,7 @@ export const ContainerSpecSchema: JSONSchemaType<ContainerSpec> = {
 }
 
 export type PodSpec = {
-  containers: {
-    spec: ContainerSpec
-  }[]
+  containers: ContainerSpec[]
 }
 
 export const PodSpecSchema: JSONSchemaType<PodSpec> = {
@@ -100,14 +98,7 @@ export const PodSpecSchema: JSONSchemaType<PodSpec> = {
   properties: {
     containers: {
       type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          spec: ContainerSpecSchema,
-        },
-        required: ['spec'],
-        additionalProperties: false,
-      },
+      items: ContainerSpecSchema,
     },
   },
   required: ['containers'],
