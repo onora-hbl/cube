@@ -14,7 +14,7 @@ import {
 } from 'cube-types'
 import { getRoleFromToken } from './utils/auth.js'
 import { wrapPatch } from './utils/mergeUtils.js'
-import { CubeError, ForbiddenError, NotAuthorizedError } from './utils/errors.js'
+import { CubeError, ForbiddenError, NotAuthorizedError, ResourceVersionGoneError } from './utils/errors.js'
 import { getFilterFromFieldSelector } from './utils/fieldSelectorUtils.js'
 
 const PORT = 3000
@@ -209,6 +209,7 @@ async function main() {
         properties: {
           watch: { type: 'boolean', default: false },
           fieldSelector: { type: 'string' },
+          resourceVersion: { type: 'number' },
         },
         additionalProperties: false,
       },
@@ -234,6 +235,13 @@ async function main() {
         return reply.code(200).send({ resources: app.resourcesStore.listResources(kind, filter) })
       }
 
+      if (
+        request.query.resourceVersion != null &&
+        !app.watchManager.isResourceVersionKnown(request.query.resourceVersion)
+      ) {
+        throw new ResourceVersionGoneError(request.query.resourceVersion)
+      }
+
       reply.hijack()
       reply.raw.writeHead(200, { 'Content-Type': 'application/x-ndjson', 'Cache-Control': 'no-cache' })
       reply.raw.flushHeaders()
@@ -244,6 +252,7 @@ async function main() {
           reply.raw.write(`${JSON.stringify(event)}\n`)
         },
         filter,
+        request.query.resourceVersion,
       )
       reply.raw.on('close', unsubscribe)
       return reply

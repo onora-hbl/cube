@@ -2,6 +2,7 @@ import type { ResourceDefinition, ResourceKind } from 'cube-types'
 import type { FastifyPluginAsync } from 'fastify'
 import fp from 'fastify-plugin'
 import logger from './logger.js'
+import { RingBuffer } from './RingBuffer.js'
 
 type WatchEvent = {
   event: 'ADDED' | 'MODIFIED' | 'DELETED'
@@ -26,8 +27,26 @@ type ListenerClient = {
 
 export class WatchManager {
   private listenersByKind = new Map<ResourceKind, Set<ListenerClient>>()
+  private eventBuffer = new RingBuffer<Change>(1000)
 
-  public subscribe(kind: ResourceKind, callback: Listener, filter?: Filter): () => void {
+  constructor(private resourceVersionFloor: number) {}
+
+  public isResourceVersionKnown(resourceVersion: number): boolean {
+    return resourceVersion >= this.resourceVersionFloor
+  }
+
+  private replayEvents(sinceResourceVersion: number, kind: ResourceKind, client: ListenerClient) {
+    for (const change of this.eventBuffer) {
+      if (change.kind === kind && change.version > sinceResourceVersion) {
+        const watchEvent = this.toWatchEvent(change, client.filter)
+        if (watchEvent != null) {
+          client.listener(watchEvent)
+        }
+      }
+    }
+  }
+
+  public subscribe(kind: ResourceKind, callback: Listener, filter?: Filter, sinceResourceVersion?: number): () => void {
     let listeners = this.listenersByKind.get(kind)
     if (listeners == null) {
       listeners = new Set()
@@ -38,12 +57,19 @@ export class WatchManager {
       filter: filter ?? ((_: ResourceDefinition<ResourceKind>) => true),
     }
     listeners.add(client)
+    if (sinceResourceVersion != null) {
+      this.replayEvents(sinceResourceVersion, kind, client)
+    }
     return () => {
       listeners.delete(client)
     }
   }
 
   public recordChange(change: Change) {
+    const evicted = this.eventBuffer.push(change)
+    if (evicted != null) {
+      this.resourceVersionFloor = Math.max(this.resourceVersionFloor, evicted.version)
+    }
     const clients = this.listenersByKind.get(change.kind)
     if (!clients) return
     for (const client of [...clients]) {
@@ -83,7 +109,13 @@ declare module 'fastify' {
 }
 
 const watchManagerPlugin: FastifyPluginAsync = async (fastify) => {
-  const watchManager = new WatchManager()
+  const resourceVersionFloor = fastify.db
+    .prepare<[], { resourceVersion: number }>(
+      `SELECT value as resourceVersion FROM cluster_state WHERE key = 'resource_version'`,
+    )
+    .get()!.resourceVersion
+
+  const watchManager = new WatchManager(resourceVersionFloor)
 
   fastify.decorate('watchManager', watchManager)
 

@@ -53,3 +53,9 @@ export class InvalidFieldSelector extends CubeError {
     super(400, 'INVALID_FIELD_SELECTOR', message)
   }
 }
+
+export class ResourceVersionGoneError extends CubeError {
+  constructor(resourceVersion: number) {
+    super(410, 'RESOURCE_VERSION_GONE', `Resource version ${resourceVersion} is gone`)
+  }
+}
