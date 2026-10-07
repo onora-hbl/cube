@@ -10,6 +10,7 @@ export const PATCH_POLICY: Record<ResourceKind, PatchRule[]> = {
   node: [
     { pattern: ['status'], roles: [CubeRole.CUBELET] },
     { pattern: ['metadatas', 'finalizers'], roles: [] },
+    { pattern: ['spec'], roles: [CubeRole.CUBELET] },
   ],
   pod: [{ pattern: ['status'], roles: [CubeRole.CUBELET] }],
 }
@@ -21,6 +22,6 @@ export const ALL_KINDS_PATCH_POLICY: PatchRule[] = [
 ]
 
 export const DELETE_RESOURCE_POLICY: Record<ResourceKind, CubeRole[]> = {
-  node: [CubeRole.CUBELET],
+  node: [CubeRole.CUBELET, CubeRole.CLI],
   pod: [CubeRole.CLI],
 }

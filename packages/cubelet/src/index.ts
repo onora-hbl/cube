@@ -2,6 +2,7 @@ import Fastify, { type FastifyError } from 'fastify'
 import type { JsonSchemaToTsProvider } from '@fastify/type-provider-json-schema-to-ts'
 import { CubeError } from './utils/errors.js'
 import logger from './utils/logger.js'
+import apiServerPlugin from './apiServer.js'
 
 const PORT = 3042
 const API_SERVER_URL = '127.0.0.1:3000'
@@ -12,7 +13,13 @@ let isAppReady = false
 async function main() {
   const app = Fastify().withTypeProvider<JsonSchemaToTsProvider>()
 
-  app.decorateRequest('role', null)
+  await app.register(apiServerPlugin, {
+    url: API_SERVER_URL,
+    selfIp: SELF_URL,
+    selfPort: PORT,
+    token: 'cube-cubelet-token',
+    name: 'cubelet-1',
+  })
 
   app.addHook('onReady', () => {
     isAppReady = true
@@ -81,6 +88,8 @@ async function main() {
     port: PORT,
   })
   logger.info(`Cubelet is running on port ${String(PORT)}`)
+
+  await app.apiServer.selfRegister()
 }
 
 main().catch((err: unknown) => {
