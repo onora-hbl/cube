@@ -1,0 +1,16 @@
+[
+  {
+    "kind": "pod",
+    "metadatas": {
+      "name": "test-pod"
+    },
+    "spec": {
+      "containers": [
+        {
+          "name": "test-container",
+          "image": "nginx:latest"
+        }
+      ]
+    }
+  }
+]
