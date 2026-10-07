@@ -23,22 +23,13 @@ import { Ajv, type ValidateFunction } from 'ajv'
 import { assertPatchAllowed } from './patchPolicies.js'
 import { applyMergePatch, type JsonObject } from './mergeUtils.js'
 import { ForbiddenError, InvalidPatchError, ResourceAlreadyExistsError, ResourceNotFoundError } from './errors.js'
+import { CREATE_RESOURCE_POLICY, DELETE_RESOURCE_POLICY } from './resourcePolicies.js'
 
 const FINAL_DELETION_INTERVAL_MS = 5_000
 
 const DEFAULT_STATUS: ResourceStatusMap = {
   node: {},
   pod: { phase: PodePhase.PENDING },
-}
-
-const CREATE_RESOURCE_POLICY: Record<ResourceKind, CubeRole[]> = {
-  node: [CubeRole.CUBELET],
-  pod: [CubeRole.CLI],
-}
-
-const DELETE_RESOURCE_POLICY: Record<ResourceKind, CubeRole[]> = {
-  node: [CubeRole.CUBELET],
-  pod: [CubeRole.CLI],
 }
 
 const ajv = new Ajv()
