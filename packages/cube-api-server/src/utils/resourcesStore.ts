@@ -211,7 +211,12 @@ class ResourcesStore {
 
     const definition = writeTransaction()
 
-    this.watchManager.onCreate(definition)
+    this.watchManager.recordChange({
+      kind: definition.kind,
+      previous: null,
+      current: definition,
+      version: definition.metadatas.resourceVersion,
+    })
 
     return definition
   }
@@ -236,22 +241,28 @@ class ResourcesStore {
       return { ...current }
     }
 
-    if (JSON.stringify(merged.spec) !== JSON.stringify(current.spec)) {
-      merged.metadatas.generation = current.metadatas.generation + 1
-    }
+    const specChanged = JSON.stringify(merged.spec) !== JSON.stringify(current.spec)
 
     const writeTransaction = this.db.transaction(() => {
       const version = this.bumpResourceVersionStmt.get()!.value
-      merged.metadatas = { ...merged.metadatas, resourceVersion: version }
-      this.updateResource(params.kind, params.name, merged.metadatas, merged.spec, merged.status)
-
-      const definition: ResourceDefinition<K> = { ...merged }
-      this.watchManager.onUpdate(definition)
-
-      return definition
+      const metadatas: ResourceMetadatas = {
+        ...merged.metadatas,
+        resourceVersion: version,
+        generation: current.metadatas.generation + (specChanged ? 1 : 0),
+      }
+      this.updateResource(params.kind, params.name, metadatas, merged.spec, merged.status)
+      return { ...merged, metadatas } as ResourceDefinition<K>
     })
 
     const definition = writeTransaction()
+
+    this.watchManager.recordChange({
+      kind: definition.kind,
+      previous: current,
+      current: definition,
+      version: definition.metadatas.resourceVersion,
+    })
+
     return definition
   }
 
@@ -262,6 +273,10 @@ class ResourcesStore {
 
     const current = this.selectResource(kind, name)
     if (current == null) throw new ResourceNotFoundError(kind, name)
+
+    if (current.metadatas.deletionTimestamp != null) {
+      return { ...current }
+    }
 
     const definition = this.patchResource(
       { kind, name, patch: { metadatas: { deletionTimestamp: new Date().getTime() } } },
@@ -275,8 +290,18 @@ class ResourcesStore {
 
   private finalDeletionTick() {
     for (const resource of this.selectAllResourcesIdForFinalDeletion()) {
-      this.deleteResourceById(resource.metadatas.id)
-      this.watchManager.onDelete(resource)
+      const writeTransaction = this.db.transaction(() => {
+        const version = this.bumpResourceVersionStmt.get()!.value
+        this.deleteResourceById(resource.metadatas.id)
+        return version
+      })
+      const version = writeTransaction()
+      this.watchManager.recordChange({
+        kind: resource.kind,
+        previous: resource,
+        current: null,
+        version,
+      })
     }
   }
 

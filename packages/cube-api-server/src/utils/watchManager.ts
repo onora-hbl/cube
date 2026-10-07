@@ -1,51 +1,76 @@
 import type { ResourceDefinition, ResourceKind } from 'cube-types'
 import type { FastifyPluginAsync } from 'fastify'
 import fp from 'fastify-plugin'
+import logger from './logger.js'
 
 type WatchEvent = {
   event: 'ADDED' | 'MODIFIED' | 'DELETED'
   object: ResourceDefinition<ResourceKind>
 }
 
+type Change = {
+  kind: ResourceKind
+  version: number
+  previous: ResourceDefinition<ResourceKind> | null
+  current: ResourceDefinition<ResourceKind> | null
+}
+
+type Filter = (resource: ResourceDefinition<ResourceKind>) => boolean
+
 type Listener = (event: WatchEvent) => void
 
-export class WatchManager {
-  private listenersByKind = new Map<ResourceKind, Set<Listener>>()
+type ListenerClient = {
+  listener: Listener
+  filter: Filter
+}
 
-  public subscribe(kind: ResourceKind, callback: Listener): () => void {
+export class WatchManager {
+  private listenersByKind = new Map<ResourceKind, Set<ListenerClient>>()
+
+  public subscribe(kind: ResourceKind, callback: Listener, filter?: Filter): () => void {
     let listeners = this.listenersByKind.get(kind)
     if (listeners == null) {
       listeners = new Set()
       this.listenersByKind.set(kind, listeners)
     }
-    listeners.add(callback)
+    const client = {
+      listener: callback,
+      filter: filter ?? ((_: ResourceDefinition<ResourceKind>) => true),
+    }
+    listeners.add(client)
     return () => {
-      listeners.delete(callback)
+      listeners.delete(client)
     }
   }
 
-  public onCreate<K extends ResourceKind>(definition: ResourceDefinition<K>) {
-    this.dispatch('ADDED', definition)
-  }
-
-  public onUpdate<K extends ResourceKind>(definition: ResourceDefinition<K>) {
-    this.dispatch('MODIFIED', definition)
-  }
-
-  public onDelete<K extends ResourceKind>(definition: ResourceDefinition<K>) {
-    this.dispatch('DELETED', definition)
-  }
-
-  private dispatch(event: WatchEvent['event'], object: ResourceDefinition<ResourceKind>) {
-    const listeners = this.listenersByKind.get(object.kind)
-    if (!listeners) return
-    for (const listener of [...listeners]) {
+  public recordChange(change: Change) {
+    const clients = this.listenersByKind.get(change.kind)
+    if (!clients) return
+    for (const client of [...clients]) {
       try {
-        listener({ event, object })
+        const watchEvent = this.toWatchEvent(change, client.filter)
+        if (watchEvent != null) {
+          client.listener(watchEvent)
+        }
       } catch (err) {
         logger.error({ err }, 'Watch listener failed')
       }
     }
+  }
+
+  private toWatchEvent(change: Change, filter: Filter): WatchEvent | null {
+    const before = change.previous !== null && filter(change.previous)
+    const after = change.current !== null && filter(change.current)
+    if (after && !before) return { event: 'ADDED', object: change.current! }
+    if (after && before) return { event: 'MODIFIED', object: change.current! }
+    if (!after && before) {
+      const last = change.current ?? change.previous!
+      return {
+        event: 'DELETED',
+        object: { ...last, metadatas: { ...last.metadatas, resourceVersion: change.version } },
+      }
+    }
+    return null
   }
 
   public [Symbol.dispose]() {}
