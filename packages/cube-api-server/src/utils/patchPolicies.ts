@@ -1,29 +1,16 @@
 import { CubeRole, type ResourceKind } from 'cube-types'
 import { isJsonObject, type JsonObject } from './mergeUtils.js'
 import { NotAuthorizedError } from './errors.js'
+import { ALL_KINDS_PATCH_POLICY, PATCH_POLICY } from './resourcePolicies.js'
 
-type Rule = { pattern: string[]; roles: CubeRole[] }
-
-const PATCH_POLICY: Record<ResourceKind, Rule[]> = {
-  node: [
-    { pattern: ['status'], roles: [CubeRole.CUBELET] },
-    { pattern: ['metadatas', 'finalizers'], roles: [] },
-  ],
-  pod: [{ pattern: ['status'], roles: [CubeRole.CUBELET] }],
-}
-
-const ALL_KINDS_POLICY: Rule[] = [
-  { pattern: ['metadatas', 'labels'], roles: [CubeRole.CLI] },
-  { pattern: ['metadatas', 'finalizers'], roles: [CubeRole.CLI, CubeRole.CUBELET] },
-  { pattern: ['metadatas', 'deletionTimestamp'], roles: [CubeRole.API_SERVER] },
-]
+export type PatchRule = { pattern: string[]; roles: CubeRole[] }
 
 function matches(pattern: string[], path: string[]): boolean {
   return pattern.length <= path.length && pattern.every((segment, i) => segment === '*' || segment === path[i])
 }
 
-function resolveRule(kind: ResourceKind, path: string[]): Rule | undefined {
-  return [...PATCH_POLICY[kind], ...ALL_KINDS_POLICY]
+function resolveRule(kind: ResourceKind, path: string[]): PatchRule | undefined {
+  return [...PATCH_POLICY[kind], ...ALL_KINDS_PATCH_POLICY]
     .filter((rule) => matches(rule.pattern, path))
     .sort((a, b) => b.pattern.length - a.pattern.length)[0]
 }
