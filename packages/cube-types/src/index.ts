@@ -10,6 +10,7 @@ export type ResourceMetadatas = {
   deletionTimestamp?: number
   resourceVersion: number
   finalizers: string[]
+  generation: number
 }
 
 export const ResourceMetadatasSchema: JSONSchemaType<ResourceMetadatas> = {
@@ -30,8 +31,9 @@ export const ResourceMetadatasSchema: JSONSchemaType<ResourceMetadatas> = {
       type: 'array',
       items: { type: 'string' },
     },
+    generation: { type: 'number' },
   },
-  required: ['id', 'name', 'creationTimestamp', 'resourceVersion', 'finalizers'],
+  required: ['id', 'name', 'creationTimestamp', 'resourceVersion', 'finalizers', 'generation'],
   additionalProperties: false,
 }
 

@@ -194,6 +194,7 @@ class ResourcesStore {
         creationTimestamp: new Date().getTime(),
         resourceVersion: version,
         finalizers: [],
+        generation: 1,
       }
       const status = this.getDefaultStatus(params.kind)
 
@@ -233,6 +234,10 @@ class ResourcesStore {
 
     if (JSON.stringify(merged) === JSON.stringify(current)) {
       return { ...current }
+    }
+
+    if (JSON.stringify(merged.spec) !== JSON.stringify(current.spec)) {
+      merged.metadatas.generation = current.metadatas.generation + 1
     }
 
     const writeTransaction = this.db.transaction(() => {
