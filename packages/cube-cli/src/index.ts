@@ -95,6 +95,19 @@ async function applyResource(manifestPath: string) {
   }
 }
 
+async function deleteResource(kind: ResourceKind, name: string) {
+  const res = await fetchApiServer(`/resource/${kind}/${name}`, 'DELETE')
+  if (!res.ok) {
+    if (res.status === 404) {
+      console.error(`Resource ${kind}/${name} not found`)
+      process.exit(1)
+    }
+    console.error(`Failed to delete resource ${kind}/${name}: ${res.statusText}`)
+    process.exit(1)
+  }
+  console.log(`Resource ${kind}/${name} deleted successfully`)
+}
+
 async function main() {
   await healthCheck()
 
@@ -125,6 +138,25 @@ async function main() {
       process.exit(1)
     }
     await applyResource(manifestPath)
+    process.exit(0)
+  }
+
+  if (command === 'delete') {
+    const kind = process.argv[3]
+    if (kind == null) {
+      console.error('No kind provided for delete command')
+      process.exit(1)
+    }
+    if (!RESOURCE_KINDS.includes(kind)) {
+      console.error(`Invalid kind provided for delete command. Valid kinds are: ${RESOURCE_KINDS.join(', ')}`)
+      process.exit(1)
+    }
+    const name = process.argv[4]
+    if (name == null) {
+      console.error('No name provided for delete command')
+      process.exit(1)
+    }
+    await deleteResource(kind as ResourceKind, name)
     process.exit(0)
   }
 
