@@ -55,6 +55,7 @@ class ResourcesStore {
   private updateStmt
   private selectAllStmt
   private deleteStmt
+  private bumpResourceVersionStmt
   private finalDeletionTimeout
 
   constructor(
@@ -79,6 +80,9 @@ class ResourcesStore {
       { id: string; kind: ResourceKind; metadatas: string; spec: string; status: string }
     >('SELECT id, kind, metadatas, spec, status FROM resources')
     this.deleteStmt = this.db.prepare<[string], void>('DELETE FROM resources WHERE id = ?')
+    this.bumpResourceVersionStmt = db.prepare<[], { value: number }>(
+      "UPDATE cluster_state SET value = value + 1 WHERE key = 'resource_version' RETURNING value",
+    )
 
     this.finalDeletionTimeout = setInterval(() => this.finalDeletionTick(), FINAL_DELETION_INTERVAL_MS)
   }
@@ -181,24 +185,30 @@ class ResourcesStore {
       throw new ResourceAlreadyExistsError(params.kind, params.metadatas.name)
     }
 
-    const id = uuid()
-    const metadatas: ResourceMetadatas = {
-      id,
-      ...params.metadatas,
-      creationTimestamp: new Date().getTime(),
-      resourceVersion: 1,
-      finalizers: [],
-    }
-    const status = this.getDefaultStatus(params.kind)
+    const writeTransaction = this.db.transaction(() => {
+      const version = this.bumpResourceVersionStmt.get()!.value
+      const id = uuid()
+      const metadatas: ResourceMetadatas = {
+        id,
+        ...params.metadatas,
+        creationTimestamp: new Date().getTime(),
+        resourceVersion: version,
+        finalizers: [],
+      }
+      const status = this.getDefaultStatus(params.kind)
 
-    this.insertResource(params.kind, metadatas, params.spec, status)
+      this.insertResource(params.kind, metadatas, params.spec, status)
 
-    const definition: ResourceDefinition<K> = {
-      kind: params.kind,
-      metadatas,
-      status,
-      spec: params.spec,
-    }
+      const definition: ResourceDefinition<K> = {
+        kind: params.kind,
+        metadatas,
+        status,
+        spec: params.spec,
+      }
+      return definition
+    })
+
+    const definition = writeTransaction()
 
     this.watchManager.onCreate(definition)
 
@@ -225,11 +235,18 @@ class ResourcesStore {
       return { ...current }
     }
 
-    merged.metadatas = { ...merged.metadatas, resourceVersion: current.metadatas.resourceVersion + 1 }
-    this.updateResource(params.kind, params.name, merged.metadatas, merged.spec, merged.status)
+    const writeTransaction = this.db.transaction(() => {
+      const version = this.bumpResourceVersionStmt.get()!.value
+      merged.metadatas = { ...merged.metadatas, resourceVersion: version }
+      this.updateResource(params.kind, params.name, merged.metadatas, merged.spec, merged.status)
 
-    const definition: ResourceDefinition<K> = { ...merged }
-    this.watchManager.onUpdate(definition)
+      const definition: ResourceDefinition<K> = { ...merged }
+      this.watchManager.onUpdate(definition)
+
+      return definition
+    })
+
+    const definition = writeTransaction()
     return definition
   }
 
