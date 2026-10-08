@@ -33,12 +33,16 @@ export class ApiServer {
   }
 
   private async heartbeatTick() {
-    const res = await this.fetchServer(`/resource/node/${this.name}/status`, 'PATCH', {
-      lastHeartbeatTimestamp: new Date().getTime(),
-    })
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}))
-      logger.error({ err: data }, `Failed to send heartbeat for node ${this.name}: ${res.statusText}`)
+    try {
+      const res = await this.fetchServer(`/resource/node/${this.name}/status`, 'PATCH', {
+        lastHeartbeatTimestamp: new Date().getTime(),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        logger.error({ err: data }, `Failed to send heartbeat for node ${this.name}: ${res.statusText}`)
+      }
+    } catch (err) {
+      logger.error({ err }, `Failed to send heartbeat for node ${this.name}`)
     }
   }
 
