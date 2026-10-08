@@ -54,16 +54,26 @@ export const NodeSpecSchema: JSONSchemaType<NodeSpec> = {
   additionalProperties: false,
 }
 
+export enum NodeReadiness {
+  READY = 'Ready',
+  NOT_READY = 'NotReady',
+}
+
 export type NodeStatus = {
   lastHeartbeatTimestamp?: number
+  readiness: NodeReadiness
 }
 
 export const NodeStatusSchema: JSONSchemaType<NodeStatus> = {
   type: 'object',
   properties: {
     lastHeartbeatTimestamp: { type: 'number', nullable: true },
+    readiness: {
+      type: 'string',
+      enum: Object.values(NodeReadiness),
+    },
   },
-  required: [],
+  required: ['readiness'],
   additionalProperties: false,
 }
 
@@ -252,4 +262,5 @@ export enum CubeRole {
   CLI = 'cube cli',
   CUBELET = 'cubelet',
   API_SERVER = 'api server',
+  NODE_LIFECYCLE_CONTROLLER = 'node lifecycle controller',
 }

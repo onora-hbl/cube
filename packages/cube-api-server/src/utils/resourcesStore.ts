@@ -3,6 +3,7 @@ import fp from 'fastify-plugin'
 import Database from 'better-sqlite3'
 import {
   CubeRole,
+  NodeReadiness,
   NodeSpecSchema,
   NodeStatusSchema,
   PodePhase,
@@ -28,7 +29,7 @@ import { CREATE_RESOURCE_POLICY, DELETE_RESOURCE_POLICY } from './resourcePolici
 const FINAL_DELETION_INTERVAL_MS = 5_000
 
 const DEFAULT_STATUS: ResourceStatusMap = {
-  node: {},
+  node: { readiness: NodeReadiness.NOT_READY },
   pod: { phase: PodePhase.PENDING },
 }
 
@@ -39,7 +40,7 @@ const VALIDATORS: Record<ResourceKind, { spec: ValidateFunction; status: Validat
   pod: { spec: ajv.compile(PodSpecSchema), status: ajv.compile(PodeStatusSchema) },
 }
 
-class ResourcesStore {
+export class ResourcesStore {
   private existsStmt
   private insertStmt
   private selectStmt

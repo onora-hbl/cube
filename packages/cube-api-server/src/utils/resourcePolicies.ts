@@ -8,7 +8,8 @@ export const CREATE_RESOURCE_POLICY: Record<ResourceKind, CubeRole[]> = {
 
 export const PATCH_POLICY: Record<ResourceKind, PatchRule[]> = {
   node: [
-    { pattern: ['status'], roles: [CubeRole.CUBELET] },
+    { pattern: ['status', 'lastHeartbeatTimestamp'], roles: [CubeRole.CUBELET] },
+    { pattern: ['status', 'readiness'], roles: [CubeRole.NODE_LIFECYCLE_CONTROLLER] },
     { pattern: ['metadatas', 'finalizers'], roles: [] },
     { pattern: ['spec'], roles: [CubeRole.CUBELET] },
   ],

@@ -16,6 +16,7 @@ import { getRoleFromToken } from './utils/auth.js'
 import { wrapPatch } from './utils/mergeUtils.js'
 import { CubeError, ForbiddenError, NotAuthorizedError, ResourceVersionGoneError } from './utils/errors.js'
 import { getFilterFromFieldSelector } from './utils/fieldSelectorUtils.js'
+import nodeLifecycleControllerPlugin from './nodeLifecycleController.js'
 
 const PORT = 3000
 
@@ -50,6 +51,7 @@ async function main() {
   await app.register(dbPlugin, { filePath: '/tmp/cube-db.sqlite' })
   await app.register(watchManagerPlugin)
   await app.register(resourcesStorePlugin)
+  await app.register(nodeLifecycleControllerPlugin)
 
   app.addHook('onReady', () => {
     isAppReady = true
