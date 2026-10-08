@@ -6,8 +6,8 @@ import {
   NodeReadiness,
   NodeSpecSchema,
   NodeStatusSchema,
-  PodePhase,
-  PodeStatusSchema,
+  PodPhase,
+  PodStatusSchema,
   PodSpecSchema,
   ResourceMetadatasSchema,
   type CreateResourceMetadatas,
@@ -30,14 +30,14 @@ const FINAL_DELETION_INTERVAL_MS = 5_000
 
 const DEFAULT_STATUS: ResourceStatusMap = {
   node: { readiness: NodeReadiness.NOT_READY },
-  pod: { phase: PodePhase.PENDING },
+  pod: { phase: PodPhase.PENDING },
 }
 
 const ajv = new Ajv()
 const validateMetadatas = ajv.compile(ResourceMetadatasSchema)
 const VALIDATORS: Record<ResourceKind, { spec: ValidateFunction; status: ValidateFunction }> = {
   node: { spec: ajv.compile(NodeSpecSchema), status: ajv.compile(NodeStatusSchema) },
-  pod: { spec: ajv.compile(PodSpecSchema), status: ajv.compile(PodeStatusSchema) },
+  pod: { spec: ajv.compile(PodSpecSchema), status: ajv.compile(PodStatusSchema) },
 }
 
 export class ResourcesStore {

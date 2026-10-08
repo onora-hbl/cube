@@ -13,7 +13,10 @@ export const PATCH_POLICY: Record<ResourceKind, PatchRule[]> = {
     { pattern: ['metadatas', 'finalizers'], roles: [] },
     { pattern: ['spec'], roles: [CubeRole.CUBELET] },
   ],
-  pod: [{ pattern: ['status'], roles: [CubeRole.CUBELET] }],
+  pod: [
+    { pattern: ['status'], roles: [CubeRole.CUBELET] },
+    { pattern: ['spec', 'nodeName'], roles: [CubeRole.POD_SCHEDULER] },
+  ],
 }
 
 export const ALL_KINDS_PATCH_POLICY: PatchRule[] = [

@@ -61,7 +61,7 @@ export class ApiServer {
     if (postRes.status !== 409) {
       const data = await postRes.json().catch(() => ({}))
       logger.error({ err: data }, `Failed to register node ${this.name}: ${postRes.statusText}`)
-      throw new Error(`Failed to register node ${this.name}: ${postRes.statusText}`)
+      setTimeout(this.selfRegister.bind(this), 5000)
     }
 
     const patchRes = await this.fetchServer(`/resource/node/${this.name}/spec`, 'PATCH', {
@@ -76,7 +76,7 @@ export class ApiServer {
 
     const data = await patchRes.json().catch(() => ({}))
     logger.error({ err: data }, `Failed to update node ${this.name}: ${patchRes.statusText}`)
-    throw new Error(`Failed to update node ${this.name}: ${patchRes.statusText}`)
+    setTimeout(this.selfRegister.bind(this), 5000)
   }
 
   public [Symbol.dispose]() {

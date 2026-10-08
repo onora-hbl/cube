@@ -100,12 +100,17 @@ export const ContainerSpecSchema: JSONSchemaType<ContainerSpec> = {
 }
 
 export type PodSpec = {
+  nodeName?: string
   containers: ContainerSpec[]
 }
 
 export const PodSpecSchema: JSONSchemaType<PodSpec> = {
   type: 'object',
   properties: {
+    nodeName: {
+      type: 'string',
+      nullable: true,
+    },
     containers: {
       type: 'array',
       items: ContainerSpecSchema,
@@ -115,7 +120,7 @@ export const PodSpecSchema: JSONSchemaType<PodSpec> = {
   additionalProperties: false,
 }
 
-export enum PodePhase {
+export enum PodPhase {
   PENDING = 'Pending',
   RUNNING = 'Running',
   SUCCEEDED = 'Succeeded',
@@ -123,15 +128,15 @@ export enum PodePhase {
 }
 
 export type PodStatus = {
-  phase: PodePhase
+  phase: PodPhase
 }
 
-export const PodeStatusSchema: JSONSchemaType<PodStatus> = {
+export const PodStatusSchema: JSONSchemaType<PodStatus> = {
   type: 'object',
   properties: {
     phase: {
       type: 'string',
-      enum: Object.values(PodePhase),
+      enum: Object.values(PodPhase),
     },
   },
   required: ['phase'],
@@ -176,7 +181,7 @@ export const PodDefinitionSchema: JSONSchemaType<ResourceDefinition<'pod'>> = {
   properties: {
     kind: { type: 'string', const: 'pod' },
     metadatas: ResourceMetadatasSchema,
-    status: PodeStatusSchema,
+    status: PodStatusSchema,
     spec: PodSpecSchema,
   },
   required: ['kind', 'metadatas', 'status', 'spec'],
@@ -263,4 +268,5 @@ export enum CubeRole {
   CUBELET = 'cubelet',
   API_SERVER = 'api server',
   NODE_LIFECYCLE_CONTROLLER = 'node lifecycle controller',
+  POD_SCHEDULER = 'pod scheduler',
 }
